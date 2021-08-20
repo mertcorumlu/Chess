@@ -10,14 +10,7 @@
 
 struct ChessFrame : public wxFrame {
 public:
-    ChessFrame(wxWindow *parent,
-               wxWindowID id,
-               const wxString& title,
-               const wxPoint& pos = wxDefaultPosition,
-               const wxSize& size = wxDefaultSize,
-               long style = wxDEFAULT_FRAME_STYLE,
-               const wxString& name = wxASCII_STR(wxFrameNameStr)) : wxFrame(parent, id, title, pos, size, style, name) {}
-
+    ChessFrame(wxWindow *parent, wxWindowID id, const wxString& title);
     void paintEvent(wxPaintEvent & evt);
 
 private:

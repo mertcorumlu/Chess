@@ -5,33 +5,32 @@
 #ifndef CHESS_BOARD_H
 #define CHESS_BOARD_H
 
-#define SQUARE_SIZE 100
-
 #include <wx/wx.h>
 #include <array>
+#include <memory>
+#include "Representation.h"
 
-class Piece;
+using namespace std;
 
-struct Board : public wxPanel {
-    Board(wxFrame* parent);
+class Board : public wxPanel {
+
+    shared_ptr<Piece> draggedPiece = nullptr;
+    shared_ptr<vector<wxPoint>> possibleMoves = nullptr;
+
+    void parseFEN(string str);
     void render(wxDC& dc);
-    void paintEvent(wxPaintEvent & evt);
-    void onMouseMove(wxMouseEvent & evt);
-    void onMouseClick(wxMouseEvent & evt);
-    void onMouseRelease(wxMouseEvent & evt);
-
-    using arr_type = std::array<std::array<std::unique_ptr<Piece>, 8>, 8>;
-
-
-private:
-    Piece* whiteKing;
-    Piece* blackKing;
-    arr_type pieces;
-    void parseFEN(std::string str);
-    Piece* draggedPiece = nullptr;
-    std::unique_ptr<std::vector<wxPoint>> possibleMoves;
+    void paintEvent(wxPaintEvent& evt);
+    void onMouseMove(wxMouseEvent& evt);
+    void onMouseClick(wxMouseEvent& evt);
+    void onMouseRelease(wxMouseEvent& evt);
 
     DECLARE_EVENT_TABLE()
+
+public:
+    const static int SQ_SIZE = 100;
+    Representation board;
+
+    explicit Board(wxFrame* parent);
 };
 
 

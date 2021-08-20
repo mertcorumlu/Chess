@@ -7,8 +7,8 @@
 #include "Board.h"
 #include "Piece.h"
 
-Board::Board(wxFrame* parent) : wxPanel(parent), possibleMoves() {
-    parent->SetClientSize(SQUARE_SIZE * 8, SQUARE_SIZE * 8);
+Board::Board(wxFrame* parent) : wxPanel(parent), possibleMoves(), board() {
+    parent->SetClientSize(Board::SQ_SIZE * 8, Board::SQ_SIZE * 8);
     parseFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
 }
 
@@ -24,14 +24,12 @@ void Board::parseFEN(std::string fen) {
             case 'b': case 'B':
             case 'q': case 'Q':
             case 'k': case 'K':
-                pieces[x][y] = std::make_unique<Piece>(c, wxPoint(x, y));
-                if (c == 'k') blackKing = pieces[x][y].get();
-                if (c == 'K') whiteKing = pieces[x][y].get();
+                board.add(make_shared<Piece>(*this, c, wxPoint(x, y)));
                 ++x;
             break;
 
             case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':
-                for(; x < c - '0'; x++) pieces[x][y] = nullptr;
+                for(int i = 0; i < c - '0'; ++i, ++x) board[x][y] = nullptr;
             break;
 
             case '/':
@@ -40,7 +38,7 @@ void Board::parseFEN(std::string fen) {
             break;
 
             default:
-                pieces[x][y] = nullptr;
+                board[x][y] = nullptr;
         }
     }
 }
@@ -56,21 +54,26 @@ void Board::render(wxDC &dc) {
 
     if (possibleMoves) {
 
-        dc.SetBrush(*wxGREEN_BRUSH);
+        dc.SetBrush(wxBrush(wxColor(0, 255, 0, 150)));
 
-        for (auto point : *possibleMoves)
-            dc.DrawRectangle(point.x * SQUARE_SIZE, point.y * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
+        for (auto& point : *possibleMoves)
+            dc.DrawRectangle(point.x * Board::SQ_SIZE, point.y * Board::SQ_SIZE, Board::SQ_SIZE, Board::SQ_SIZE);
     }
 
 
     for (int y = 0; y < 8; ++y) {
         for (int x = 0; x < 8; ++x) {
 
-            Piece* piece = pieces[x][y].get();
-            if(piece && piece->bitmap)
-                dc.DrawBitmap(*piece->bitmap, piece->canvasPos.x, piece->canvasPos.y);
+            auto piece = board[x][y];
+            if(piece && piece != draggedPiece && piece->bitmap) {
+                dc.DrawBitmap(*piece->bitmap, piece->getCanvasPos().x, piece->getCanvasPos().y);
+            }
         }
     }
+
+    if(draggedPiece && draggedPiece->bitmap)
+        dc.DrawBitmap(*draggedPiece->bitmap, draggedPiece->getCanvasPos().x, draggedPiece->getCanvasPos().y);
+
 }
 
 void Board::onMouseMove(wxMouseEvent& evt) {
@@ -78,12 +81,12 @@ void Board::onMouseMove(wxMouseEvent& evt) {
     if (draggedPiece) {
         int x = evt.GetPosition().x, y = evt.GetPosition().y;
 
-        if (x >= SQUARE_SIZE / 2 && x <= 7.5 * SQUARE_SIZE) {
-            draggedPiece->canvasPos = wxPoint(x - SQUARE_SIZE / 2, draggedPiece->canvasPos.y);
+        if (x >= Board::SQ_SIZE / 2 && x <= 7.5 * Board::SQ_SIZE) {
+            draggedPiece->moveCanvasPos(x - Board::SQ_SIZE / 2, draggedPiece->getCanvasPos().y);
         }
 
-        if (y >= SQUARE_SIZE / 2 && y <= 7.5 * SQUARE_SIZE) {
-            draggedPiece->canvasPos = wxPoint(draggedPiece->canvasPos.x, y - SQUARE_SIZE / 2);
+        if (y >= Board::SQ_SIZE / 2 && y <= 7.5 * Board::SQ_SIZE) {
+            draggedPiece->moveCanvasPos(draggedPiece->getCanvasPos().x, y - Board::SQ_SIZE / 2);
         }
 
         Refresh(true);
@@ -91,11 +94,12 @@ void Board::onMouseMove(wxMouseEvent& evt) {
 }
 
 void Board::onMouseClick(wxMouseEvent& evt) {
-    int x = evt.GetPosition().x / SQUARE_SIZE, y = evt.GetPosition().y / SQUARE_SIZE;
+    int x = evt.GetPosition().x / Board::SQ_SIZE, y = evt.GetPosition().y / Board::SQ_SIZE;
 
-    if (pieces[x][y]) {
-        draggedPiece = pieces[x][y].get();
-        possibleMoves = std::move(draggedPiece->getPossibleMoves(pieces));
+    if (board[x][y]) {
+        draggedPiece = board[x][y];
+        draggedPiece->createMoves();
+        possibleMoves = draggedPiece->getMoves();
     }
 
     Refresh(true);
@@ -105,24 +109,16 @@ void Board::onMouseRelease(wxMouseEvent& evt) {
 
     if (draggedPiece) {
 
-        int x = (draggedPiece->canvasPos.x + SQUARE_SIZE / 2) / SQUARE_SIZE,
-            y = (draggedPiece->canvasPos.y + SQUARE_SIZE / 2) / SQUARE_SIZE;
+        int x = (draggedPiece->getCanvasPos().x + Board::SQ_SIZE / 2) / Board::SQ_SIZE,
+            y = (draggedPiece->getCanvasPos().y + Board::SQ_SIZE / 2) / Board::SQ_SIZE;
 
         wxPoint point(x, y);
 
-        if (std::find(possibleMoves->begin(), possibleMoves->end(), point) != possibleMoves->end()) {
+        if (std::find(possibleMoves->begin(), possibleMoves->end(), point) != possibleMoves->end())
+            draggedPiece->move(x, y);
+        else
+            draggedPiece->move(draggedPiece->getPos().x, draggedPiece->getPos().y);
 
-            pieces[x][y] = std::move(pieces[draggedPiece->pos.x][draggedPiece->pos.y]);
-            pieces[x][y].get()->canvasPos = wxPoint(x * SQUARE_SIZE, y * SQUARE_SIZE);
-
-            if (!(draggedPiece->pos.x == x && draggedPiece->pos.y == y))
-                pieces[draggedPiece->pos.x][draggedPiece->pos.y] = nullptr;
-
-            draggedPiece->pos = wxPoint(x, y);
-
-        } else {
-            draggedPiece->canvasPos = wxPoint(draggedPiece->pos.x * SQUARE_SIZE, draggedPiece->pos.y * SQUARE_SIZE);
-        }
         draggedPiece = nullptr;
         possibleMoves.reset();
 

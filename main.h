@@ -5,15 +5,11 @@
 #ifndef CHESS_MAIN_H
 #define CHESS_MAIN_H
 
-#include <iostream>
 #include <wx/wx.h>
-#include "Board.h"
-#include "ChessFrame.h"
 
-struct Chess : public wxApp {
+class Chess : public wxApp {
+public:
     bool OnInit() override;
-    ChessFrame* frame = nullptr;
-    Board* board = nullptr;
 };
 
 #endif //CHESS_MAIN_H

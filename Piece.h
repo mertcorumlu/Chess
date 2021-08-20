@@ -6,37 +6,59 @@
 #define CHESS_PIECE_H
 
 #include <wx/wx.h>
-#include "Board.h"
 
-struct Piece {
-    const static wxImage* img;
-    const wxBitmap* bitmap;
-    const char type;
+class Board;
+class Representation;
 
-    const wxPoint initialPos;
-    wxPoint canvasPos;
+using namespace std;
+
+class Piece {
+
     wxPoint pos;
+    wxPoint canvasPos;
 
-    static wxImage getPieceFromSprite(int i, int j);
-    std::unique_ptr<std::vector<wxPoint>> getPossibleMoves(const Board::arr_type& pieces);
+    shared_ptr<vector<wxPoint>> moves;
 
-    void kingMoves(std::vector<wxPoint>& moves, const Board::arr_type& pieces);
-    void queenMoves(std::vector<wxPoint>& moves, const Board::arr_type& pieces);
-    void bishopMoves(std::vector<wxPoint>& moves, const Board::arr_type& pieces);
-    void rockMoves(std::vector<wxPoint>& moves, const Board::arr_type& pieces);
-    void knightMoves(std::vector<wxPoint>& moves, const Board::arr_type& pieces);
-    void pawnMoves(std::vector<wxPoint>& moves, const Board::arr_type& pieces);
-
-
-    void tryDir(int i, int x, int y, bool* dir, std::vector<wxPoint> &moves, const Board::arr_type &pieces);
+    void tryDir(int i, int x, int y, bool* dir);
 
     template<bool Eats = true, bool Diagonal = false>
-    bool movePossible(int x, int y, const Board::arr_type&) const;
-    bool isCheck(Piece const * king);
+    bool movePossible(int x, int y) const;
 
-    bool isEnemy(const Piece&) const;
-    bool isWhite() const;
-    Piece(char type, wxPoint position);
+//    bool isCheck(Piece const * king);
+
+    static wxImage getPieceFromSprite(int i, int j);
+
+    [[nodiscard]] unsigned char neutralize() const;
+
+    void kingMoves();
+    void queenMoves();
+    void bishopMoves();
+    void rockMoves();
+    void knightMoves();
+    void pawnMoves();
+
+public:
+    const static wxImage* sprite;
+    static uint8_t idCounter;
+
+    Board& board;
+    unique_ptr<wxBitmap> bitmap;
+
+    const uint8_t ID;
+    const unsigned char type;
+    const wxPoint intPos;
+    double value;
+
+    Piece(Board& board, uint8_t type, wxPoint position);
+
+    void move(int x, int y);
+    void moveCanvasPos(int x, int y);
+    [[nodiscard]] const wxPoint& getPos() const;
+    [[nodiscard]] const wxPoint& getCanvasPos() const;
+    shared_ptr<vector<wxPoint>> getMoves();
+    void createMoves();
+    [[nodiscard]] bool isEnemy(const Piece&) const;
+    [[nodiscard]] bool isWhite() const;
 };
 
 

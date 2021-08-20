@@ -1,33 +1,30 @@
 //
 // Created by Mert Çorumlu on 18.08.2021.
 //
-#include <iostream>
 #include "main.h"
+#include "Board.h"
+#include "ChessFrame.h"
 #include "Piece.h"
 
-using namespace std;
-
-const wxImage* Piece::img;
-
+// Initialize
 bool Chess::OnInit() {
 
     wxInitAllImageHandlers();
 
-    Piece::img = new wxImage("img/pieces_sprite.png");
+    //TODO Embed image into executable
+    Piece::sprite = new wxImage("img/pieces_sprite.png");
 
-    frame = new ChessFrame(nullptr, wxID_ANY, "Chess", wxPoint(100, 100), wxDefaultSize);
-
-    board = new Board(frame);
+    auto* frame = new ChessFrame(nullptr, wxID_ANY, "Chess");
+    new Board(frame);
 
     // non-resizeable
-//    frame->SetMaxSize(frame->GetSize());
+    frame->SetMaxSize(frame->GetSize());
     frame->SetMinSize(frame->GetSize());
-
     frame->Center();
-
     frame->Show(true);
 
     return true;
 }
 
+// Implement main
 wxIMPLEMENT_APP(Chess);
