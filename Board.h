@@ -8,7 +8,8 @@
 #include <wx/wx.h>
 #include <array>
 #include <memory>
-#include "Representation.h"
+#include "Piece.h"
+#include "Bitboard.h"
 
 using namespace std;
 
@@ -28,7 +29,7 @@ class Board : public wxPanel {
 
 public:
     const static int SQ_SIZE = 100;
-    Representation board;
+    Bitboard board;
 
     explicit Board(wxFrame* parent);
 };
