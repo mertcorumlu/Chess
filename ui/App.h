@@ -2,14 +2,14 @@
 // Created by Mert Çorumlu on 18.08.2021.
 //
 
-#ifndef CHESS_MAIN_H
-#define CHESS_MAIN_H
+#ifndef CHESS_APP_H
+#define CHESS_APP_H
 
 #include <wx/wx.h>
 
-class Chess : public wxApp {
+class App : public wxApp {
 public:
     bool OnInit() override;
 };
 
-#endif //CHESS_MAIN_H
+#endif //CHESS_APP_H

@@ -2,26 +2,17 @@
 // Created by Mert Çorumlu on 20.08.2021.
 //
 
-#ifndef CHESS_BITBOARD_H
-#define CHESS_BITBOARD_H
+#ifndef CHESS_BOARD_H
+#define CHESS_BOARD_H
 
-#include <cstdint>
-#include <cstddef>
+#include "Attack.h"
 #include <string>
-#include <immintrin.h>
 
 using namespace std;
 
-void printBits(uint64_t a, bool b);
-
-using U8 = uint8_t;
-using U64 = uint64_t;
-using U32 = uint32_t;
-using U256 = __m256i;
-
 #define SHL(quadboard, index) _mm256_slli_epi64(quadboard, index);
 
-struct Bitboard {
+struct Board {
 
     constexpr static U64 AFile             = 0x0101010101010101;
     constexpr static U64 BFile             = 0x0202020202020202;
@@ -87,8 +78,8 @@ struct Bitboard {
     U64 attacking[2];
 
     struct Proxy {
-        Proxy(const Bitboard& board, const U8& x) : board{board}, x{x} {}
-        const Bitboard& board; const U8& x;
+        Proxy(const Board& board, const U8& x) : board{board}, x{x} {}
+        const Board& board; const U8& x;
         Piece operator[](U8 y) const;
     };
 
@@ -114,7 +105,7 @@ struct Bitboard {
     inline U64 getPawns();
 
 public:
-    Bitboard(string &&fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+    Board(string &&fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
 
     void add(Piece p, U8 x, U8 y);
     Piece remove(U8 x, U8 y);
@@ -126,12 +117,14 @@ public:
     [[nodiscard]] Type typeAt(U8 x, U8 y) const;
     [[nodiscard]] Piece pieceAt(U8 x, U8 y) const;
 
-    static inline Color colorOf(Piece p);
-    static inline Type typeOf(Piece p);
-    static inline Piece merge(Color, Type);
+    static Color colorOf(Piece p);
+    static Type typeOf(Piece p);
+    static Piece merge(Color, Type);
 
     Proxy operator[](const U8& x) const;
+
+    static void printBoard(uint64_t a);
 };
 
 
-#endif //CHESS_BITBOARD_H
+#endif //CHESS_BOARD_H

@@ -2,10 +2,10 @@
 // Created by Mert Çorumlu on 20.08.2021.
 //
 
-#include "Bitboard.h"
+#include "Board.h"
 #include <iostream>
 
-Bitboard::Bitboard(string &&fen) : quadboard(), attacking() {
+Board::Board(string &&fen) : quadboard(), attacking() {
 
     // Initialize Quadboard
     quadboard = _mm256_setzero_si256();
@@ -35,43 +35,43 @@ Bitboard::Bitboard(string &&fen) : quadboard(), attacking() {
         }
     }
 
-    updateAttackingSquares(Bitboard::Color::White);
-    updateAttackingSquares(Bitboard::Color::Black);
+    updateAttackingSquares(Board::Color::White);
+    updateAttackingSquares(Board::Color::Black);
 }
 
-void Bitboard::add(Bitboard::Piece p, U8 x, U8 y) {
+void Board::add(Board::Piece p, U8 x, U8 y) {
     // IMPORTANT: Only for initial adding, later use move() instead
     quadboard |= SHL(getTypeArray(p), indexOf(x, y));
 }
 
-Bitboard::Piece Bitboard::remove(U8 x, U8 y) {
+Board::Piece Board::remove(U8 x, U8 y) {
     Piece p = pieceAt(x, y);
 
     quadboard ^= SHL(getTypeArray(p), indexOf(x, y));
-    updateAttackingSquares(Bitboard::Color::White);
-    updateAttackingSquares(Bitboard::Color::Black);
+    updateAttackingSquares(Board::Color::White);
+    updateAttackingSquares(Board::Color::Black);
     return p;
 }
 
-void Bitboard::move(U8 x, U8 y, U8 _x, U8 _y) {
+void Board::move(U8 x, U8 y, U8 _x, U8 _y) {
     // First remove piece at (x, y)
     Piece p = remove(x, y);
-
     remove(_x, _y);
     add(p, _x, _y);
-    updateAttackingSquares(Bitboard::Color::White);
-    updateAttackingSquares(Bitboard::Color::Black);
+
+    updateAttackingSquares(Board::Color::White);
+    updateAttackingSquares(Board::Color::Black);
 }
 
-Bitboard::Color Bitboard::colorAt(U8 x, U8 y) const {
+Board::Color Board::colorAt(U8 x, U8 y) const {
     return colorOf(pieceAt(x, y));
 }
 
-Bitboard::Type Bitboard::typeAt(U8 x, U8 y) const {
+Board::Type Board::typeAt(U8 x, U8 y) const {
     return typeOf(pieceAt(x, y));
 }
 
-Bitboard::Piece Bitboard::pieceAt(U8 x, U8 y) const {
+Board::Piece Board::pieceAt(U8 x, U8 y) const {
     U8 index = indexOf(x, y);
    return Piece(
            ((quadboard[0] >> index) & 1) |
@@ -81,30 +81,30 @@ Bitboard::Piece Bitboard::pieceAt(U8 x, U8 y) const {
     );
 }
 
-Bitboard::Color Bitboard::colorOf(Bitboard::Piece p) {
+Board::Color Board::colorOf(Board::Piece p) {
     return Color(p & color_mask);
 }
 
-Bitboard::Type Bitboard::typeOf(Bitboard::Piece p) {
+Board::Type Board::typeOf(Board::Piece p) {
     return Type((p & type_mask) >> 1);
 }
 
-Bitboard::Piece Bitboard::merge(Color c, Type t) {
+Board::Piece Board::merge(Color c, Type t) {
     return Piece((t << 1) | c);
 }
 
-U8 Bitboard::indexOf(U8 x, U8 y) {
+U8 Board::indexOf(U8 x, U8 y) {
     return x + (y << 3); // x + 8 * y
 }
 
-U256 Bitboard::getTypeArray(Piece p) {
+U256 Board::getTypeArray(Piece p) {
     Type t  = typeOf(p);
     Color c = colorOf(p);
     return type_arr[c * 6 + t];
 }
 
 template<>
-U64 Bitboard::fixedAttackingSquares<Bitboard::King>(Bitboard::Color c) {
+U64 Board::fixedAttackingSquares<Board::King>(Board::Color c) {
     //TODO test et + refactor
 
     // No need to SIMD
@@ -119,7 +119,7 @@ U64 Bitboard::fixedAttackingSquares<Bitboard::King>(Bitboard::Color c) {
 }
 
 template<>
-U64 Bitboard::fixedAttackingSquares<Bitboard::Knight>(Bitboard::Color c) {
+U64 Board::fixedAttackingSquares<Board::Knight>(Board::Color c) {
 
     constexpr static U256 qmask_east = {
             static_cast<long long>(~(AFile | BFile)),
@@ -146,7 +146,7 @@ U64 Bitboard::fixedAttackingSquares<Bitboard::Knight>(Bitboard::Color c) {
 }
 
 template<>
-U64 Bitboard::fixedAttackingSquares<Bitboard::Pawn>(Bitboard::Color c) {
+U64 Board::fixedAttackingSquares<Board::Pawn>(Board::Color c) {
 
     // No need to SIMD
     U64 kings = (c ? getBlack() : ~getBlack()) & getPawns();
@@ -162,7 +162,7 @@ U64 Bitboard::fixedAttackingSquares<Bitboard::Pawn>(Bitboard::Color c) {
     return l | r;
 }
 
-U64 Bitboard::slidingAttackingSquares(Color c) {
+U64 Board::slidingAttackingSquares(Color c) {
 
     // Todo can be replaced with magic bitboards
 
@@ -221,102 +221,85 @@ U64 Bitboard::slidingAttackingSquares(Color c) {
     return qflood2[0] | qflood2[1] | qflood2[2] | qflood2[3];
 }
 
-U64 Bitboard::getBlack() {
+U64 Board::getBlack() {
     return quadboard[0];
 }
 
-U64 Bitboard::getWhite() {
+U64 Board::getWhite() {
     return quadboard[0] ^ getOccupied();
 }
 
-U64 Bitboard::getOccupied() {
+U64 Board::getOccupied() {
     return quadboard[1] | quadboard[2] | quadboard[3];
 }
 
-U64 Bitboard::getOdd() {
+U64 Board::getOdd() {
     return quadboard[1] ^ quadboard[2] ^ quadboard[3];
 }
 
-U64 Bitboard::getSlidingOrthogonal() {
+U64 Board::getSlidingOrthogonal() {
     // (b1 & b3) | ((b1 ^ b2 ^ b3) & b3) => b3 & ((b1 ^ b2 ^ b3) | b1)
 
     return quadboard[3] & (getOdd() | quadboard[1]);
 }
 
-U64 Bitboard::getSlidingDiagonal() {
+U64 Board::getSlidingDiagonal() {
     // (b1 & b3) | (b1 & b2) => b1 & (b2 | b3)
     return quadboard[1] & (quadboard[2] | quadboard[3]);
 }
 
-U64 Bitboard::getBishops() {
+U64 Board::getBishops() {
     return quadboard[1] & quadboard[2];
 }
 
-U64 Bitboard::getRooks() {
+U64 Board::getRooks() {
     return quadboard[3] & getOdd();
 }
 
-U64 Bitboard::getQueens() {
+U64 Board::getQueens() {
     return quadboard[1] & quadboard[3];
 }
 
-U64 Bitboard::getKnights() {
+U64 Board::getKnights() {
     return quadboard[2] & getOdd();
 }
 
-U64 Bitboard::getKings() {
+U64 Board::getKings() {
     return quadboard[2] & quadboard[3];
 }
 
-U64 Bitboard::getPawns() {
+U64 Board::getPawns() {
     return quadboard[1] & getOdd();
 }
 
-Bitboard::Proxy Bitboard::operator[](const U8& x) const {
+Board::Proxy Board::operator[](const U8& x) const {
     return Proxy(*this, x);
 }
 
-void Bitboard::updateAttackingSquares(Bitboard::Color c) {
+void Board::updateAttackingSquares(Board::Color c) {
     attacking[c] = 0;
     attacking[c] |= fixedAttackingSquares<Pawn>(c) | fixedAttackingSquares<King>(c) |
                     fixedAttackingSquares<Knight>(c) | slidingAttackingSquares(c);
     attacking[c] &= c ? ~getBlack() : ~getWhite();
 }
 
-Bitboard::Piece Bitboard::Proxy::operator[](U8 y) const {
-    cout << (int) x << (int) y << endl;
+Board::Piece Board::Proxy::operator[](U8 y) const {
     return board.pieceAt(x, y);
 }
 
-void printBits(uint64_t a, bool b) {
+void Board::printBoard(U64 a) {
 
     for (int i = 0; i < 8; ++i) {
         uint8_t s = (a & 0xff00000000000000) >> 56;
         cout << 8 - i << "  ";
         for (int j = 0; j < 8; ++j) {
-            cout << (s & 0x1) << "  ";
+            cout << ((s & 0x1) ? '1' : '.') << "  ";
             s >>= 1;
         }
+        cout << endl;
         a <<= 8;
-        if (b) cout << endl;
-
     }
 
     cout << "   a  b  c  d  e  f  g  h" << endl;
-
-//    for (int i = 0; i < 32; ++i) {
-//        cout << ((a & 0x80000000) >> 31);
-//        a <<= 1;
-//    }
-
     cout << endl;
-}
-
-int main() {
-    Bitboard b;//("R5p/2pR1p1p/1p4p/2p5/3p1R/2p4p/ppp2pp/p2p2p");
-    uint64_t attacks = b.slidingAttackingSquares(Bitboard::Color::Black);
-//    printBits(attacks, true);
-    printBits(b.attacking[0], true);
-
-//    printBits(b.getBlack(), true);
 }
