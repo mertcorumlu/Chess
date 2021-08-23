@@ -35,7 +35,7 @@ void Canvas::_render(wxDC &dc) {
 
     dc.SetBrush(wxBrush(wxColor(255, 0, 0, 150)));
 
-    uint64_t attacks = _board.attacking[Board::Color::White];
+    uint64_t attacks = 0;
 
     for (int y = 0; y < 8; ++y) {
         for (int x = 0; x < 8; ++x) {

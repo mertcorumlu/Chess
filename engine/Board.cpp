@@ -5,7 +5,11 @@
 #include "Board.h"
 #include <iostream>
 
-Board::Board(string &&fen) : quadboard(), attacking() {
+Board::Board(string &&fen) : quadboard() {
+
+    int i;
+    cin >> i;
+    printBoard(a._rookTable[i]);
 
     // Initialize Quadboard
     quadboard = _mm256_setzero_si256();
@@ -34,9 +38,6 @@ Board::Board(string &&fen) : quadboard(), attacking() {
             default: continue;
         }
     }
-
-    updateAttackingSquares(Board::Color::White);
-    updateAttackingSquares(Board::Color::Black);
 }
 
 void Board::add(Board::Piece p, U8 x, U8 y) {
@@ -48,8 +49,6 @@ Board::Piece Board::remove(U8 x, U8 y) {
     Piece p = pieceAt(x, y);
 
     quadboard ^= SHL(getTypeArray(p), indexOf(x, y));
-    updateAttackingSquares(Board::Color::White);
-    updateAttackingSquares(Board::Color::Black);
     return p;
 }
 
@@ -58,9 +57,6 @@ void Board::move(U8 x, U8 y, U8 _x, U8 _y) {
     Piece p = remove(x, y);
     remove(_x, _y);
     add(p, _x, _y);
-
-    updateAttackingSquares(Board::Color::White);
-    updateAttackingSquares(Board::Color::Black);
 }
 
 Board::Color Board::colorAt(U8 x, U8 y) const {
@@ -101,124 +97,6 @@ U256 Board::getTypeArray(Piece p) {
     Type t  = typeOf(p);
     Color c = colorOf(p);
     return type_arr[c * 6 + t];
-}
-
-template<>
-U64 Board::fixedAttackingSquares<Board::King>(Board::Color c) {
-    //TODO test et + refactor
-
-    // No need to SIMD
-    U64 kings = (c ? getBlack() : ~getBlack()) & getKings();
-    U64 l = (kings >> 1) & ~GFile;
-    U64 r = (kings << 1) & ~AFile;
-    U64 attacks = l | r;
-    kings |= attacks;
-    U64 u = kings >> 8;
-    U64 d = kings << 8;
-    return attacks | u | d;
-}
-
-template<>
-U64 Board::fixedAttackingSquares<Board::Knight>(Board::Color c) {
-
-    constexpr static U256 qmask_east = {
-            static_cast<long long>(~(AFile | BFile)),
-            static_cast<long long>(~AFile),
-            static_cast<long long>(~HFile),
-            static_cast<long long>(~(GFile | HFile))
-    };
-
-    constexpr static U256 qmask_west = {
-            static_cast<long long>(~(GFile | HFile)),
-            static_cast<long long>(~HFile),
-            static_cast<long long>(~AFile),
-            static_cast<long long>(~(AFile | BFile))
-    };
-
-    constexpr static U256 qshift  = {10, 17, 15 , 6};
-
-    U256 qknights = _mm256_set1_epi64x(static_cast<long long>((c ? getBlack() : ~getBlack()) & getKnights()));
-
-    U256 ret = (qknights << qshift) & qmask_east;
-    ret |= (qknights >> qshift) & qmask_west;
-
-    return ret[0] | ret[1] | ret[2] | ret[3];
-}
-
-template<>
-U64 Board::fixedAttackingSquares<Board::Pawn>(Board::Color c) {
-
-    // No need to SIMD
-    U64 kings = (c ? getBlack() : ~getBlack()) & getPawns();
-
-    U64 l, r;
-    if (c) {
-        l = (kings >> 9) & ~HFile;
-        r = (kings >> 7) & ~AFile;
-    } else {
-        l = (kings << 9) & ~AFile;
-        r = (kings << 7) & ~HFile;
-    }
-    return l | r;
-}
-
-U64 Board::slidingAttackingSquares(Color c) {
-
-    // Todo can be replaced with magic bitboards
-
-    constexpr static U256 qmask_east  = {
-            static_cast<long long>(~AFile),
-            -1,
-            static_cast<long long>(~HFile),
-            static_cast<long long>(~AFile)
-    };
-
-    constexpr static U256 qmask_west  = {
-            static_cast<long long>(~HFile),
-            -1,
-            static_cast<long long>(~AFile),
-            static_cast<long long>(~HFile)
-    };
-
-    constexpr static U256 qshift = {1, 8, 7, 9};
-
-    auto rq = static_cast<long long>(getSlidingOrthogonal());
-    auto bq = static_cast<long long>(getSlidingDiagonal());
-
-    auto color = static_cast<long long>(c ? getBlack() : ~getBlack());
-
-    rq &= color;
-    bq &= color;
-
-    U256 gen = {rq, rq, bq, bq};
-
-    U256 empty_east = _mm256_set1_epi64x(static_cast<long long>(~getOccupied()));
-    U256 empty_west{empty_east};
-
-    empty_east &= qmask_east;
-    empty_west &= qmask_west;
-
-    U256 gen1{gen};
-    U256 qflood1 {gen1};
-    qflood1 |= gen1 = (gen1 << qshift) & empty_east;
-    qflood1 |= gen1 = (gen1 << qshift) & empty_east;
-    qflood1 |= gen1 = (gen1 << qshift) & empty_east;
-    qflood1 |= gen1 = (gen1 << qshift) & empty_east;
-    qflood1 |= gen1 = (gen1 << qshift) & empty_east;
-    qflood1 |=        (gen1 << qshift) & empty_east;
-    qflood1  =     (qflood1 << qshift) & qmask_east;
-
-    U256 qflood2 (gen);
-    qflood2 |= (gen >> qshift) & empty_west;
-    qflood2 |= gen = (gen >> qshift) & empty_west;
-    qflood2 |= gen = (gen >> qshift) & empty_west;
-    qflood2 |= gen = (gen >> qshift) & empty_west;
-    qflood2 |= gen = (gen >> qshift) & empty_west;
-    qflood2 |=       (gen >> qshift) & empty_west;
-    qflood2  =   (qflood2 >> qshift) & qmask_west;
-
-    qflood2 |= qflood1;
-    return qflood2[0] | qflood2[1] | qflood2[2] | qflood2[3];
 }
 
 U64 Board::getBlack() {
@@ -274,13 +152,6 @@ U64 Board::getPawns() {
 
 Board::Proxy Board::operator[](const U8& x) const {
     return Proxy(*this, x);
-}
-
-void Board::updateAttackingSquares(Board::Color c) {
-    attacking[c] = 0;
-    attacking[c] |= fixedAttackingSquares<Pawn>(c) | fixedAttackingSquares<King>(c) |
-                    fixedAttackingSquares<Knight>(c) | slidingAttackingSquares(c);
-    attacking[c] &= c ? ~getBlack() : ~getWhite();
 }
 
 Board::Piece Board::Proxy::operator[](U8 y) const {

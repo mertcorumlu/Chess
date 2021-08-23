@@ -6,28 +6,21 @@
 #define CHESS_ATTACK_H
 
 #include <array>
-#include <immintrin.h>
 
 using namespace std;
 
 using U8 = uint8_t;
-using U64 = uint64_t;
+using U16 = uint16_t;
 using U32 = uint32_t;
-using U128 = __m128i;
-using U256 = __m256i;
-
+using U64 = uint64_t;
 
 class Attack {
 public:
 
     constexpr Attack();
 
-     constexpr U64 get(int i) const {
-        return _rookMasks[i];
-    }
 
-
-private:
+//private:
 
     // Constants for calculations
 
@@ -111,9 +104,12 @@ private:
 
     // 2^9 * 4 + 2^7 * 12 + 2^6 * 4 + 2^5 * 44 = 2^7 (16 + 12 + 2 + 11)
     array<U64, (1 << 7) * 41> _bishopTable;
+    array<U32, 64> _bishopStartIndexes;
 
     // 2^10 * 36 + 2^11 * 24 + 2^12 * 4 = 2^12 (9 + 12 + 4)
     array<U64, (1 << 12) * 25> _rookTable;
+    array<U32, 64> _rookStartIndexes;
+
 
     constexpr void _initBishopMasks();
     constexpr void _initRookMasks();
@@ -121,9 +117,40 @@ private:
     constexpr void _initNonSlidingTable();
     constexpr void _initBishopTable();
     constexpr void _initRookTable();
+
+    template<bool bishop>
+    constexpr U32 _hash(U64 nonoccupied, U8 index) const;
+
+    template<typename F>
+    static constexpr U64 _traverseSubsets(U64 bitMask);
+
+    template<int dir>
+    static constexpr U64 _generateSlidingAttacks(U64 piece, U64 nonoccupied);
 };
+
 
 #include "Attack.cpp"
 
+
+// Must be explicitly instantiated before using;
+template U32 Attack::_hash<false>(U64, U8) const;
+
+template U32 Attack::_hash<true>(U64, U8) const;
+
+template U64 Attack::_generateSlidingAttacks<1>(U64, U64);
+
+template U64 Attack::_generateSlidingAttacks<-1>(U64, U64);
+
+template U64 Attack::_generateSlidingAttacks<7>(U64, U64);
+
+template U64 Attack::_generateSlidingAttacks<-7>(U64, U64);
+
+template U64 Attack::_generateSlidingAttacks<8>(U64, U64);
+
+template U64 Attack::_generateSlidingAttacks<-8>(U64, U64);
+
+template U64 Attack::_generateSlidingAttacks<9>(U64, U64);
+
+template U64 Attack::_generateSlidingAttacks<-9>(U64, U64);
 
 #endif //CHESS_ATTACK_H
