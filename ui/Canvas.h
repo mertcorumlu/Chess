@@ -8,7 +8,7 @@
 #include <wx/wx.h>
 #include <array>
 #include <memory>
-#include "Piece.h"
+#include "Symbol.h"
 #include "../engine/Board.h"
 
 using namespace std;
@@ -22,8 +22,8 @@ public:
 private:
 
     Board _board;
-    array<array<shared_ptr<Piece>, 8> ,8> _pieces;
-    shared_ptr<Piece> _draggedPiece = nullptr;
+    array<array<shared_ptr<Symbol>, 8> ,8> _pieces;
+    shared_ptr<Symbol> _draggedPiece = nullptr;
 
     void _render(wxDC& dc);
     void _onPaint(wxPaintEvent& evt);

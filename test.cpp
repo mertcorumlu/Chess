@@ -4,9 +4,9 @@
 
 #include<iostream>
 #include <array>
-//#include "engine/Board.h"
 
-#include "engine/Attack.h"
+#include "Attack.h"
+#include "Board.h"
 
 using namespace std;
 
@@ -29,14 +29,8 @@ void printBoard(uint64_t a) {
 
 int main() {
 
-    constexpr Attack a;
-    printBoard(a._bishopMasks[7]);
-    cout << a._bishopMasks[0];
-//    U64 piece = 1;
-//    U64 nonoccupied = -1;
-//    U64 b = a._generateSlidingAttacks(piece, nonoccupied, 7) | a._generateSlidingAttacks(piece, nonoccupied, -7) |
-//    a._generateSlidingAttacks(piece, nonoccupied, 9) | a._generateSlidingAttacks(piece, nonoccupied, -9);
-//    Board::printBoard(b);
-//    Board::printBoard(a._rookTable[a._hash<false>(-1, 0)]);
-//    cout << _mm_popcnt_u64(0b11) << endl;
+//    Attack a;
+//    Board::printBoard(a.slidingAttacks(Queen, 11, -1));
+    Board b;
+    cout << (int) b.pieceAt(0,0) << endl;
 }

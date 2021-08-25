@@ -2,23 +2,24 @@
 // Created by Mert Çorumlu on 18.08.2021.
 //
 
-#ifndef CHESS_PIECE_H
-#define CHESS_PIECE_H
+#ifndef CHESS_SYMBOL_H
+#define CHESS_SYMBOL_H
 
 #include <wx/wx.h>
 #include "../engine/Board.h"
+#include "../types.h"
 
 class Canvas;
 
 using namespace std;
 
-class Piece {
+class Symbol {
 
 public:
     const static wxImage* sprite;
-    const Board::Piece piece;
+    const Piece::Piece piece;
 
-    Piece(Board::Piece piece, wxPoint position);
+    Symbol(Piece::Piece piece, wxPoint position);
 
     void setPos(int x, int y);
     void setCanvasPos(int x, int y);
@@ -35,4 +36,4 @@ private:
 };
 
 
-#endif //CHESS_PIECE_H
+#endif //CHESS_SYMBOL_H

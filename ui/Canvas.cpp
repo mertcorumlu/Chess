@@ -5,16 +5,16 @@
 #include <utility>
 #include <unordered_map>
 #include "Canvas.h"
-#include "Piece.h"
+#include "Symbol.h"
 
 Canvas::Canvas(wxFrame* parent) : wxPanel(parent), _board(), _pieces() {
     parent->SetClientSize(Canvas::SQ_SIZE * 8, Canvas::SQ_SIZE * 8);
 
     for (int y = 0; y < 8; ++y) {
         for (int x = 0; x < 8; ++x) {
-            Board::Piece p = _board[x][y];
+            Piece::Piece p = _board[x][y];
             if (p)
-                _pieces[x][y] = make_shared<Piece>(p, wxPoint(x, y));
+                _pieces[x][y] = make_shared<Symbol>(p, wxPoint(x, y));
         }
     }
 
@@ -66,10 +66,22 @@ void Canvas::_onMouseMove(wxMouseEvent& evt) {
 
         if (x >= Canvas::SQ_SIZE / 2 && x <= 7.5 * Canvas::SQ_SIZE) {
             _draggedPiece->setCanvasPos(x - Canvas::SQ_SIZE / 2, _draggedPiece->canvasPos().y);
+        } else {
+            if (x < Canvas::SQ_SIZE / 2) {
+                _draggedPiece->setCanvasPos(0, _draggedPiece->canvasPos().y);
+            } else {
+                _draggedPiece->setCanvasPos(7 * Canvas::SQ_SIZE, _draggedPiece->canvasPos().y);
+            }
         }
 
         if (y >= Canvas::SQ_SIZE / 2 && y <= 7.5 * Canvas::SQ_SIZE) {
             _draggedPiece->setCanvasPos(_draggedPiece->canvasPos().x, y - Canvas::SQ_SIZE / 2);
+        } else {
+            if (y < Canvas::SQ_SIZE / 2) {
+                _draggedPiece->setCanvasPos(_draggedPiece->canvasPos().x, 0);
+            } else {
+                _draggedPiece->setCanvasPos(_draggedPiece->canvasPos().x, 7 * Canvas::SQ_SIZE);
+            }
         }
 
         Refresh(true);

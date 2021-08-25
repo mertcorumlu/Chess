@@ -4,7 +4,7 @@
 #include "App.h"
 #include "Canvas.h"
 #include "Frame.h"
-#include "Piece.h"
+#include "Symbol.h"
 
 // Initialize
 bool App::OnInit() {
@@ -12,7 +12,7 @@ bool App::OnInit() {
     wxInitAllImageHandlers();
 
     //TODO Embed image into executable
-    Piece::sprite = new wxImage("img/pieces_sprite.png");
+    Symbol::sprite = new wxImage("img/pieces_sprite.png");
 
     auto* frame = new Frame(nullptr, wxID_ANY, "Chess");
     new Canvas(frame);
