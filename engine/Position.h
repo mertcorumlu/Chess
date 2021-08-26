@@ -12,10 +12,13 @@
 class Position {
 public:
 
-    Position() = default;
+    Position(Board &&board, Piece::Color sideToMove, Piece::Piece lastCaptured,
+             Square enPassantTarget, Castling castlingRights, int halfMoveCLock,
+             int fullMoveCounter, Square kingPos[2]);
 
-    U64 squareAttackedBy(U8 square, Piece::Color owner = _sideToMove);
-    float evaluate();
+    Position(string&& fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
+    U64 squareAttackedBy(Square square, Piece::Color attacker = Piece::WHITE);
 
     template <Piece::Type t>
     void generatePseudoLegalMoves();
@@ -27,18 +30,47 @@ public:
 
     void generateAllLegalMoves();
 
+    Position move(Square from, Square to);
+
+
+    // getters
+    const Board &board() const;
+
+    Piece::Color sideToMove() const;
+
+    Piece::Piece lastCaptured() const;
+
+    Square enPassantTarget() const;
+
+    Castling castlingRights() const;
+
+    int halfMoveClock() const;
+
+    int fullMoveCounter() const;
+
+    const MoveList &moves() const;
+
+    U64 checkers() const;
+
+    U64 pinned() const;
+
+    const Square *kingPos() const;
+
 private:
-    const Board _board;
-    const Piece::Color _sideToMove;
-    const Piece::Piece _lastCaptured;
-    const U8 _enPassantTarget;
-    const Castling _castlingRights;
-    const int _halfMoveCLock;
-    const int _fullMoveCounter;
+    Board _board;
+    Piece::Color _sideToMove;
+    Piece::Piece _lastCaptured;
+    Square _enPassantTarget;
+    Castling _castlingRights;
+    int _halfMoveClock;
+    int _fullMoveCounter;
     MoveList _moves;
-    const U64 _checkers;
-    const U64 _checkBlockers;
-    const U8 _kingPos[2];
+    U64 _checkers;
+    U64 _pinned;
+    Square _kingPos[2];
+
+    void _findCheckers();
+    void _findPinned();
 };
 
 

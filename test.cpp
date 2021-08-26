@@ -7,6 +7,7 @@
 
 #include "Attack.h"
 #include "Board.h"
+#include "Position.h"
 
 using namespace std;
 
@@ -31,6 +32,7 @@ int main() {
 
 //    Attack a;
 //    Board::printBoard(a.slidingAttacks(Queen, 11, -1));
-    Board b;
-    cout << (int) b.pieceAt(0,0) << endl;
+//    Board b;
+//    cout << (int) b.pieceAt(0,0) << endl;
+
 }

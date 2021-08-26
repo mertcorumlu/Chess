@@ -14,12 +14,12 @@ Symbol::Symbol(Piece::Piece piece, wxPoint pos)
 
     int i;
     switch (Board::typeOf(piece)) {
-        case Piece::Type::King:  i = 0;  break;
-        case Piece::Type::Queen: i = 1;  break;
-        case Piece::Type::Bishop: i = 2; break;
-        case Piece::Type::Knight: i = 3; break;
-        case Piece::Type::Rook: i = 4;   break;
-        case Piece::Type::Pawn: i = 5;   break;
+        case Piece::Type::KING: i = 0;  break;
+        case Piece::Type::QUEEN: i = 1;  break;
+        case Piece::Type::BISHOP: i = 2; break;
+        case Piece::Type::KNIGHT: i = 3; break;
+        case Piece::Type::ROOK: i = 4;   break;
+        case Piece::Type::PAWN: i = 5;   break;
 
         default:
             _bitmap = wxBitmap();

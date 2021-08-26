@@ -18,8 +18,8 @@ extern "C" const unsigned char _rookOffsetsData[];
 class Attack {
 public:
 
-    static U64 nonSlidingAttacks(Piece::Type t, U8 index, Piece::Color c = Piece::White);
-    static U64 slidingAttacks(Piece::Type t, U8 index, U64 nonoccupied);
+    static U64 nonSlidingAttacks(Piece::Type t, Square square, Piece::Color c = Piece::WHITE);
+    static U64 slidingAttacks(Piece::Type t, Square Square, U64 nonoccupied);
 
 private:
 
@@ -32,7 +32,7 @@ private:
     static const U32 *const _rookOffsets;
 
     template<Piece::Type t>
-    static U32 _hash(U64 nonoccupied, U8 index);
+    static U32 _hash(U64 nonoccupied, Square Square);
 };
 
 #endif //CHESS_ATTACK_H

@@ -5,7 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <array>
-#include "types.h"
+#include "../types.h"
 
 #define DIRECTORY "bin"
 
@@ -19,15 +19,6 @@ public:
 private:
 
     // Constants for calculations
-
-    constexpr static U64 AFile             = 0x0101010101010101;
-    constexpr static U64 BFile             = 0x0202020202020202;
-    constexpr static U64 GFile             = 0x4040404040404040;
-    constexpr static U64 HFile             = 0x8080808080808080;
-    constexpr static U64 rank1             = 0x00000000000000FF;
-    constexpr static U64 rank8             = 0xFF00000000000000;
-    constexpr static U64 a1h8_diagonal     = 0x8040201008040201;
-    constexpr static U64 h1a8_antidiagonal = 0x0102040810204080;
 
     U64 _bishopMasks[64];
     U64 _rookMasks[64];
@@ -56,12 +47,12 @@ private:
 
     void _initNonSlidingTable();
 
-    template<Type t>
+    template<Piece::Type t>
     void _initSlidingTable();
 
     void _writeFiles();
 
-    template<Type t>
+    template<Piece::Type t>
     U32 _hash(U64 nonoccupied, U8 index) const;
 
     template<int dir>
@@ -74,8 +65,8 @@ AttackGen::AttackGen() : _bishopMasks(), _rookMasks(), _nonSlidingTable(), _bish
     _initRookMasks();
 
     _initNonSlidingTable();
-    _initSlidingTable<Bishop>();
-    _initSlidingTable<Rook>();
+    _initSlidingTable<Piece::BISHOP>();
+    _initSlidingTable<Piece::ROOK>();
 
     _writeFiles();
 }
@@ -164,7 +155,7 @@ void AttackGen::_initNonSlidingTable() {
     }
 }
 
-template <Type t>
+template <Piece::Type t>
 void AttackGen::_initSlidingTable() {
     U64 piece = 1L;
     U32 sum = 0;
@@ -174,17 +165,17 @@ void AttackGen::_initSlidingTable() {
 
         U64 mask = 0;
 
-        if constexpr(t == Bishop) {
+        if constexpr(t == Piece::BISHOP) {
             mask = _bishopMasks[i];
-        } else if constexpr(t == Rook) {
+        } else if constexpr(t == Piece::ROOK) {
             mask = _rookMasks[i];
         }
 
         U16 offset = (1 << _mm_popcnt_u64(mask));
 
-        if constexpr(t == Bishop) {
+        if constexpr(t == Piece::BISHOP) {
             _bishopOffsets[i] = sum;
-        } else if constexpr(t == Rook) {
+        } else if constexpr(t == Piece::ROOK) {
             _rookOffsets[i] = sum;
         }
 
@@ -197,13 +188,13 @@ void AttackGen::_initSlidingTable() {
             // There we go
             U64 nonoccupied = ~n;
 
-            if constexpr(t == Bishop) {
+            if constexpr(t == Piece::BISHOP) {
 
                 _bishopTable[_hash<t>(nonoccupied, i)] =
                         _generateSlidingAttacks<7>(piece, nonoccupied) | _generateSlidingAttacks<9>(piece, nonoccupied) |
                         _generateSlidingAttacks<-7>(piece, nonoccupied) | _generateSlidingAttacks<-9>(piece, nonoccupied);
 
-            } else if constexpr(t == Rook) {
+            } else if constexpr(t == Piece::ROOK) {
                 _rookTable[_hash<t>(nonoccupied, i)] =
                         _generateSlidingAttacks<1>(piece, nonoccupied) | _generateSlidingAttacks<-1>(piece, nonoccupied) |
                         _generateSlidingAttacks<8>(piece, nonoccupied) | _generateSlidingAttacks<-8>(piece, nonoccupied);
@@ -267,12 +258,12 @@ void AttackGen::_writeFiles() {
     }
 }
 
-template<Type t>
+template<Piece::Type t>
 U32 AttackGen::_hash(U64 nonoccupied, U8 index) const {
 
-    if constexpr(t == Bishop) {
+    if constexpr(t == Piece::BISHOP) {
         return _bishopOffsets[index] + _pext_u64(nonoccupied, _bishopMasks[index]);
-    } else if constexpr(t == Rook) {
+    } else if constexpr(t == Piece::ROOK) {
         return _rookOffsets[index] + _pext_u64(nonoccupied, _rookMasks[index]);
     }
 

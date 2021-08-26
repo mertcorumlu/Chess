@@ -10,6 +10,7 @@
 #include <memory>
 #include "Symbol.h"
 #include "../engine/Board.h"
+#include "../engine/Position.h"
 
 using namespace std;
 
@@ -17,11 +18,11 @@ class Canvas : public wxPanel {
 public:
     const static int SQ_SIZE = 100;
 
-    explicit Canvas(wxFrame* parent);
+    Canvas(wxFrame* parent, string &&fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
 private:
 
-    Board _board;
+    Position _position;
     array<array<shared_ptr<Symbol>, 8> ,8> _pieces;
     shared_ptr<Symbol> _draggedPiece = nullptr;
 

@@ -4,20 +4,92 @@
 
 #include "Position.h"
 #include "Attack.h"
+#include <string>
+#include <sstream>
 
-U64 Position::squareAttackedBy(U8 square, Piece::Color owner) {
-    U64 attackers = 0;
+Position::Position(Board &&board,  Piece::Color sideToMove,  Piece::Piece lastCaptured,
+                    Square enPassantTarget,  Castling castlingRights,  int halfMoveCLock,
+                    int fullMoveCounter, Square kingPos[2])
+        : _board{board}, _sideToMove(sideToMove), _lastCaptured(lastCaptured), _enPassantTarget(enPassantTarget),
+          _castlingRights(castlingRights), _halfMoveClock(halfMoveCLock), _fullMoveCounter(fullMoveCounter), _moves(256),
+          _checkers(), _pinned(), _kingPos{kingPos[0], kingPos[1]} {
 
-    // Place that square the piece and see squares that attacks corresponds enemy occupancy;
-    attackers |= Attack::nonSlidingAttacks(Piece::Knight, square);
-    attackers |= Attack::nonSlidingAttacks(Piece::King, square);
-    attackers |= Attack::nonSlidingAttacks(Piece::Pawn, square, owner); // Exception, place out pawn
-    attackers |= Attack::slidingAttacks(Piece::Queen, square, ~_board.getOccupied());
-    return attackers & (owner ? _board.getWhite() : _board.getBlack());
+    _findCheckers();
+    _findPinned();
 }
 
+Position::Position(string &&fen) {
 
-// TODO move generation could be really better
+    // construct a stream from the string
+    stringstream ss(fen);
+
+    string s;
+    string splits[6];
+    for (int i = 0; std::getline(ss, s, ' '); ++i) {
+        splits[i] = std::move(s);
+    }
+
+    // Board layout
+    _board = Board(std::move(splits[0]));
+
+    // Side To move
+    if (splits[1][0] == 'w') _sideToMove = Piece::WHITE;
+    if (splits[1][0] == 'b') _sideToMove = Piece::BLACK;
+
+    // Castlings
+    if (splits[2][0] == '-') _castlingRights = Castling::NO_CASTLING;
+    else {
+        _castlingRights = Castling::NO_CASTLING;
+
+        for(const auto& c : splits[2]) {
+            switch (c) {
+                case 'k' : _castlingRights = Castling(_castlingRights | Castling::BLACK_K); break;
+                case 'q' : _castlingRights = Castling(_castlingRights | Castling::BLACK_Q); break;
+                case 'K' : _castlingRights = Castling(_castlingRights | Castling::WHITE_K); break;
+                case 'Q' : _castlingRights = Castling(_castlingRights | Castling::WHITE_Q); break;
+                default: throw std::invalid_argument("Illegal castling character");
+            }
+        }
+    }
+
+    // En Passant
+    if (splits[3][0] == '-') _enPassantTarget = Square(-1);
+    else {
+        _enPassantTarget = Square(splits[3][0] - 'a' + 8 * (splits[3][1] - '1'));
+    }
+
+    // Half move
+    _halfMoveClock = std::stoi(splits[4]);
+
+    // Full move
+    _fullMoveCounter = std::stoi(splits[5]);
+
+    // Find kings;
+    U64 kings = _board.getKings();
+
+    _kingPos[0] = lsb(kings & _board.getWhite());
+    _kingPos[1] = lsb(kings & _board.getBlack());
+
+    // Find Checkers
+   _findCheckers();
+   _findPinned();
+
+    // Find pieces who are avoiding being in check
+}
+
+U64 Position::squareAttackedBy(Square square, Piece::Color attacker) {
+    U64 attackers = 0;
+    U64 nonoccupied = ~_board.getOccupied();
+
+    // Place that square the piece and see squares that attacks corresponds enemy occupancy;
+    attackers |= (Attack::nonSlidingAttacks(Piece::KNIGHT, square) & _board.getKnights());
+    attackers |= (Attack::nonSlidingAttacks(Piece::KING, square) & _board.getKings());
+    attackers |= (Attack::nonSlidingAttacks(Piece::PAWN, square, Piece::Color(!attacker)) & _board.getPawns()); // Exception, place out pawn
+    attackers |= (Attack::slidingAttacks(Piece::ROOK, square, nonoccupied) & _board.getSlidingOrthogonal());
+    attackers |= (Attack::slidingAttacks(Piece::BISHOP, square, nonoccupied) & _board.getSlidingDiagonal());
+    return attackers & (attacker ? _board.getBlack() : _board.getWhite());
+}
+
 
 template <Piece::Type t>
 void Position::generatePseudoLegalMoves() {
@@ -28,57 +100,57 @@ void Position::generatePseudoLegalMoves() {
     U64 nonoccupied = ~_board.getOccupied();
     U64 pieces;
 
-    if constexpr(t == Piece::King) pieces = _kingPos[c];
-    else if constexpr(t == Piece::Knight) pieces = _board.getKnights() & allies;
-    else if constexpr(t == Piece::Rook) pieces = _board.getRooks() & allies;
-    else if constexpr(t == Piece::Bishop) pieces = _board.getBishops() & allies;
-    else if constexpr(t == Piece::Queen) pieces = _board.getQueens() & allies;
+    if constexpr(t == Piece::KING) pieces = _kingPos[c];
+    else if constexpr(t == Piece::KNIGHT) pieces = _board.getKnights() & allies;
+    else if constexpr(t == Piece::ROOK) pieces = _board.getRooks() & allies;
+    else if constexpr(t == Piece::BISHOP) pieces = _board.getBishops() & allies;
+    else if constexpr(t == Piece::QUEEN) pieces = _board.getQueens() & allies;
 
     while(pieces) {
-        U8 from = pop_lsb(pieces);
+        Square from = pop_lsb(pieces);
 
         U64 attacks;
 
-        if constexpr(t == Piece::King || t == Piece::Knight )
+        if constexpr(t == Piece::KING || t == Piece::KNIGHT )
             attacks = Attack::nonSlidingAttacks(t, from);
-        else if constexpr(t == Piece::Rook || t == Piece::Bishop || t == Piece::Queen)
+        else if constexpr(t == Piece::ROOK || t == Piece::BISHOP || t == Piece::QUEEN)
             attacks = Attack::slidingAttacks(t, from, nonoccupied);
 
         // We dont want attacks on friendly pieces
         attacks &= enemies;
 
         while(attacks) {
-            U8 to = pop_lsb(attacks);
-            _moves.push_back(make_move(from, to, Move::Normal));
+            Square to = pop_lsb(attacks);
+            _moves.push_back(make_move(from, to, Move::NORMAL));
         }
     }
 
     // Check also castling moves for king
-    if constexpr(t == Piece::King) {
+    if constexpr(t == Piece::KING) {
         Castling cColor = c ? Castling::BLACK : Castling::WHITE;
         if (_castlingRights & cColor) {
-            U8 from = c ? 4 : 60 ;
+            Square from = c ? A5 : H5;
 
             if (_castlingRights & Castling::QUEEN & cColor) {
-                U64 mask = c ? 0xeULL : 0xeULL << 56;
+                U64 mask = shift(0xeULL, Direction(c ? 7 * UP : 0));
 
                 // There is a piece between
                 if (_board.getOccupied() & mask) return;
 
-                U8 to;
+                Square to;
                 if (!squareAttackedBy(pop_lsb(mask)) && !squareAttackedBy(to = pop_lsb(mask)) && squareAttackedBy(pop_lsb(mask))) {
-                    _moves.push_back(make_move(from, to, Move::Castling));
+                    _moves.push_back(make_move(from, to, Move::CASTLING));
                 }
             } else {
 
-                U64 mask = c ? 0x60ULL : 0x60ULL << 56;
+                U64 mask = shift(0x60ULL, Direction(c ? 7 * UP : 0));
 
                 // There is a piece between
                 if (_board.getOccupied() & mask) return;
 
-                U8 to;
+                Square to;
                 if (!squareAttackedBy(pop_lsb(mask)) && !squareAttackedBy(to = pop_lsb(mask))) {
-                    _moves.push_back(make_move(from, to, Move::Castling));
+                    _moves.push_back(make_move(from, to, Move::CASTLING));
                 }
 
             }
@@ -89,49 +161,50 @@ void Position::generatePseudoLegalMoves() {
 }
 
 template <>
-void Position::generatePseudoLegalMoves<Piece::Pawn>() {
+void Position::generatePseudoLegalMoves<Piece::PAWN>() {
 
     Piece::Color c = _sideToMove;
     U64 enemies = c ? _board.getWhite() : _board.getBlack();
     U64 occupied = _board.getOccupied();
     U64 pieces = _board.getPawns();
+    Direction pushDirection = c ? DOWN : UP;
 
     // Single push
-    U64 single = (c ? (pieces >> 8) : (pieces << 8)) & occupied;
+    U64 single = shift(pieces, pushDirection) & occupied;
 
     // Double push
-    U64 doubles = single & (c ? (0xffL << 40) : (0xffL << 16));
-    doubles = (c ? (doubles >> 8) : (doubles << 8)) & occupied;
+    U64 doubles = single & shift(c ? rank8 : rank1, Direction(2 * pushDirection));
+    doubles = shift(pieces, pushDirection) & occupied;
 
     while(single) {
-        U8 index = pop_lsb(single);
-        _moves.push_back(make_move(c ? (index << 8) : (index >> 8), index, Move::Normal));
+        Square square = pop_lsb(single);
+        _moves.push_back(make_move(Square(square - pushDirection), square, Move::NORMAL));
     }
 
     while(doubles) {
-        U8 index = pop_lsb(doubles);
-        _moves.push_back(make_move(c ? (index << 16) : (index >> 16), index, Move::Normal));
+        Square square = pop_lsb(doubles);
+        _moves.push_back(make_move(Square(square - 2 * pushDirection), square, Move::NORMAL));
     }
 
 
     // Attacks
     while(pieces) {
-        U8 from = pop_lsb(pieces);
-        U64 attacks = Attack::nonSlidingAttacks(Piece::Pawn, from, c) & enemies;
+        Square from = pop_lsb(pieces);
+        U64 attacks = Attack::nonSlidingAttacks(Piece::PAWN, from, c) & enemies;
 
         while(attacks) {
-            U8 to = pop_lsb(attacks);
-            _moves.push_back(make_move(from, to, Move::Normal));
+            Square to = pop_lsb(attacks);
+            _moves.push_back(make_move(from, to, Move::NORMAL));
         }
 
     }
 
     // En Passant
-    U64 enpassant = Attack::nonSlidingAttacks(Piece::Pawn, _enPassantTarget, Piece::Color(!c));
+    U64 en_passant = Attack::nonSlidingAttacks(Piece::PAWN, _enPassantTarget, Piece::Color(!c));
 
-    while(enpassant) {
-        U8 index = pop_lsb(enpassant);
-        _moves.push_back(make_move(index, _enPassantTarget, Move::En_Passant));
+    while(en_passant) {
+        Square square = pop_lsb(en_passant);
+        _moves.push_back(make_move(square, _enPassantTarget, Move::EN_PASSANT));
     }
 
 
@@ -143,7 +216,7 @@ void Position::generateLegalMoves() {
 }
 
 template <>
-void Position::generateLegalMoves<Piece::Pawn>() {
+void Position::generateLegalMoves<Piece::PAWN>() {
 
 }
 
@@ -161,24 +234,125 @@ void Position::generateAllLegalMoves() {
 
         // Single check
         if (_checkers & (_checkers - 1)) {
-            U8 checker = pop_lsb(checkers);
+            Square checker = pop_lsb(checkers);
             U64 attackers = squareAttackedBy(checker, Piece::Color(!_sideToMove));
 
             while (attackers) {
-                U8 from = pop_lsb(attackers);
-                _moves.push_back(make_move(from, checker, Move::Normal));
+                Square from = pop_lsb(attackers);
+                _moves.push_back(make_move(from, checker, Move::NORMAL));
             }
         }
 
         return;
     } else {
         // QUIET moves
-        generateLegalMoves<Piece::Knight>();
-        generateLegalMoves<Piece::Pawn>();
-        generateLegalMoves<Piece::Bishop>();
-        generateLegalMoves<Piece::Rook>();
-        generateLegalMoves<Piece::Queen>();
+        generateLegalMoves<Piece::KNIGHT>();
+        generateLegalMoves<Piece::PAWN>();
+        generateLegalMoves<Piece::BISHOP>();
+        generateLegalMoves<Piece::ROOK>();
+        generateLegalMoves<Piece::QUEEN>();
 
     }
-    generateLegalMoves<Piece::King>();
+    generateLegalMoves<Piece::KING>();
+}
+
+void Position::_findCheckers() {
+    Piece::Color c = _sideToMove;
+    _checkers =  squareAttackedBy(_kingPos[c], Piece::Color(!c));
+}
+
+void Position::_findPinned() {
+    // TODO find pinned pieces
+}
+
+const Board &Position::board() const {
+    return _board;
+}
+
+Piece::Color Position::sideToMove() const {
+    return _sideToMove;
+}
+
+Piece::Piece Position::lastCaptured() const {
+    return _lastCaptured;
+}
+
+Square Position::enPassantTarget() const {
+    return _enPassantTarget;
+}
+
+Castling Position::castlingRights() const {
+    return _castlingRights;
+}
+
+int Position::halfMoveClock() const {
+    return _halfMoveClock;
+}
+
+int Position::fullMoveCounter() const {
+    return _fullMoveCounter;
+}
+
+const MoveList &Position::moves() const {
+    return _moves;
+}
+
+U64 Position::checkers() const {
+    return _checkers;
+}
+
+U64 Position::pinned() const {
+    return _pinned;
+}
+
+const Square *Position::kingPos() const {
+    return _kingPos;
+}
+
+Position Position::move(Square from, Square to) {
+
+    // make the move on board;
+    Board tmp = _board;
+    tmp.move(from, to);
+
+    Piece::Piece movedPiece = _board.pieceAt(from);
+    Piece::Piece capturedPiece = _board.pieceAt(to);
+    Piece::Type type = Board::typeOf(movedPiece);
+    Piece::Color c = _sideToMove;
+    int halfMoves = _halfMoveClock;
+    Castling castling = _castlingRights;
+    Square kingPos[2] = {_kingPos[0], _kingPos[1]};
+
+    Square en_passant = Square(-1);
+
+    // Castling rights
+    if (type == Piece::KING) {
+        castling = Castling(castling & ~(c ? Castling::BLACK : Castling::WHITE));
+        kingPos[c] = to;
+    }
+
+    if (type == Piece::ROOK) {
+        // Queen side
+        if (from == (c ? A8 : A1)) {
+            Castling cc = c ? Castling::BLACK : Castling::WHITE;
+            castling = Castling(castling & ~(Castling::QUEEN & cc));
+        // King side
+        } else if (from == (c ? H8 : H1)) {
+            Castling cc = c ? Castling::BLACK : Castling::WHITE;
+            castling = Castling(castling & ~(Castling::KING & cc));
+        }
+    }
+
+    // Half move counter and en passant
+    // Catch en passant moves
+    if (type == Piece::PAWN) {
+        if (to == from + 16 * (c ? -1 : 1)) {
+            en_passant = Square(from + 8 * (c ? -1 : 1));
+        }
+        halfMoves = -1;
+    } else if(capturedPiece != Piece::Empty) {
+        halfMoves = -1;
+    }
+
+    return Position(std::move(tmp), Piece::Color(_sideToMove), capturedPiece, en_passant, castling, ++halfMoves, ++_fullMoveCounter, kingPos);
 }

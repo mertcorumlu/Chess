@@ -15,15 +15,15 @@ Board::Board(string &&fen) : quadboard() {
     for(auto& c : fen) {
         auto color = Piece::Color(islower(c) ? 1 : 0);
         switch (c) {
-        case 'p': case 'P': add(merge(color, Piece::Pawn), x++, y); break;
-            case 'r': case 'R': add(merge(color, Piece::Rook), x++, y); break;
-            case 'n': case 'N': add(merge(color, Piece::Knight), x++, y); break;
-            case 'b': case 'B': add(merge(color, Piece::Bishop), x++, y); break;
-            case 'q': case 'Q': add(merge(color, Piece::Queen), x++, y); break;
-            case 'k': case 'K': add(merge(color, Piece::King), x++, y); break;
+        case 'p': case 'P': add(merge(color, Piece::PAWN), squareOf(x++, y)); break;
+            case 'r': case 'R': add(merge(color, Piece::ROOK), squareOf(x++, y)); break;
+            case 'n': case 'N': add(merge(color, Piece::KNIGHT), squareOf(x++, y)); break;
+            case 'b': case 'B': add(merge(color, Piece::BISHOP), squareOf(x++, y)); break;
+            case 'q': case 'Q': add(merge(color, Piece::QUEEN), squareOf(x++, y)); break;
+            case 'k': case 'K': add(merge(color, Piece::KING), squareOf(x++, y)); break;
 
             case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':
-                for(int i = 0; i < c - '0'; ++i) add(Piece::Empty, x++, y);
+                for(int i = 0; i < c - '0'; ++i) add(Piece::Empty, squareOf(x++, y));
                 break;
 
             case '/':
@@ -36,35 +36,27 @@ Board::Board(string &&fen) : quadboard() {
     }
 }
 
-void Board::add(Piece::Piece p, U8 x, U8 y) {
+void Board::add(Piece::Piece p, Square square) {
     // IMPORTANT: Only for initial adding, later use move() instead
-    quadboard |= SHL(getTypeArray(p), indexOf(x, y));
+    quadboard |= SHL(getTypeArray(p), square);
 }
 
-Piece::Piece Board::remove(U8 x, U8 y) {
-    Piece::Piece p = pieceAt(x, y);
+Piece::Piece Board::remove(Square square) {
+    Piece::Piece p = pieceAt(square);
 
-    quadboard ^= SHL(getTypeArray(p), indexOf(x, y));
+    quadboard ^= SHL(getTypeArray(p), square);
     return p;
 }
 
-void Board::move(U8 x, U8 y, U8 _x, U8 _y) {
+void Board::move(Square from, Square to) {
     // First remove piece at (x, y)
-    Piece::Piece p = remove(x, y);
-    remove(_x, _y);
-    add(p, _x, _y);
+    Piece::Piece p = remove(from);
+    remove(to);
+    add(p, to);
 }
 
-Piece::Color Board::colorAt(U8 x, U8 y) const {
-    return colorOf(pieceAt(x, y));
-}
-
-Piece::Type Board::typeAt(U8 x, U8 y) const {
-    return typeOf(pieceAt(x, y));
-}
-
-Piece::Piece Board::pieceAt(U8 x, U8 y) const {
-    U256 tmp = _mm256_slli_epi64(quadboard, 63 - indexOf(x, y));
+Piece::Piece Board::pieceAt(Square square) const {
+    U256 tmp = _mm256_slli_epi64(quadboard, 63 - square);
     U32 val = _mm256_movemask_epi8(tmp);
    return Piece::Piece(_pext_u32(val, 0x80808080));
 }
@@ -81,8 +73,8 @@ Piece::Piece Board::merge(Piece::Color c, Piece::Type t) {
     return Piece::Piece(t | c);
 }
 
-U8 Board::indexOf(U8 x, U8 y) {
-    return x + (y << 3); // x + 8 * y
+Square Board::squareOf(U8 x, U8 y) {
+    return Square(x + (y << 3)); // x + 8 * y
 }
 
 U256 Board::getTypeArray(Piece::Piece p) {
@@ -146,7 +138,7 @@ Board::Proxy Board::operator[](const U8& x) const {
 }
 
 Piece::Piece Board::Proxy::operator[](U8 y) const {
-    return board.pieceAt(x, y);
+    return board.pieceAt(squareOf(x, y));
 }
 
 void Board::printBoard(U64 a) {

@@ -7,12 +7,13 @@
 #include "Canvas.h"
 #include "Symbol.h"
 
-Canvas::Canvas(wxFrame* parent) : wxPanel(parent), _board(), _pieces() {
+Canvas::Canvas(wxFrame *parent, string &&fen) : wxPanel(parent), _position(std::move(fen)), _pieces() {
+
     parent->SetClientSize(Canvas::SQ_SIZE * 8, Canvas::SQ_SIZE * 8);
 
     for (int y = 0; y < 8; ++y) {
         for (int x = 0; x < 8; ++x) {
-            Piece::Piece p = _board[x][y];
+            Piece::Piece p = _position.board()[x][y];
             if (p)
                 _pieces[x][y] = make_shared<Symbol>(p, wxPoint(x, y));
         }
@@ -24,18 +25,20 @@ Canvas::Canvas(wxFrame* parent) : wxPanel(parent), _board(), _pieces() {
     Connect(wxEVT_MOTION, wxMouseEventHandler(Canvas::_onMouseMove));
 }
 
+
 void Canvas::_onPaint(wxPaintEvent &) {
     wxPaintDC dc(this);
     _render(dc);
 }
 
 void Canvas::_render(wxDC &dc) {
+
     // draw some text
     dc.SetPen(*wxTRANSPARENT_PEN);
 
     dc.SetBrush(wxBrush(wxColor(255, 0, 0, 150)));
 
-    uint64_t attacks = 0;
+    uint64_t attacks = _position.checkers();
 
     for (int y = 0; y < 8; ++y) {
         for (int x = 0; x < 8; ++x) {
@@ -105,7 +108,7 @@ void Canvas::_onMouseRelease(wxMouseEvent&) {
             y = 7 - (_draggedPiece->canvasPos().y + Canvas::SQ_SIZE / 2) / Canvas::SQ_SIZE;
 
         _pieces[x][y] = std::move(_pieces[_draggedPiece->pos().x][_draggedPiece->pos().y]);
-        _board.move(_draggedPiece->pos().x, _draggedPiece->pos().y, x, y);
+        _position = _position.move(Board::squareOf(_draggedPiece->pos().x, _draggedPiece->pos().y), Board::squareOf(x, y));
         _draggedPiece->setPos(x, y);
         _draggedPiece = nullptr;
 

@@ -14,16 +14,13 @@ using namespace std;
 
 class Board {
 public:
-    Board(string &&fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+    Board(string &&fen = "nbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
 
-    void add(Piece::Piece p, U8 x, U8 y);
-    Piece::Piece remove(U8 x, U8 y);
-    void move(U8 x, U8 y, U8 _x, U8 _y);
+    void add(Piece::Piece p, Square square);
+    Piece::Piece remove(Square square);
+    void move(Square from, Square to);
 
-    Piece::Color colorAt(U8 x, U8 y) const;
-    Piece::Type typeAt(U8 x, U8 y) const;
-    Piece::Piece pieceAt(U8 x, U8 y) const;
-
+    Piece::Piece pieceAt(Square square) const;
     static Piece::Color colorOf(Piece::Piece p);
     static Piece::Type typeOf(Piece::Piece p);
     static Piece::Piece merge(Piece::Color, Piece::Type);
@@ -40,8 +37,8 @@ private:
 public:
     Proxy operator[](const U8& x) const;
 
-    static inline U8 indexOf(U8 x, U8 y);
-    static inline U256 getTypeArray(Piece::Piece p);
+    static Square squareOf(U8 x, U8 y);
+    static U256 getTypeArray(Piece::Piece p);
 
     U64 getBlack() const;
     U64 getWhite() const;

@@ -15,7 +15,7 @@ bool App::OnInit() {
     Symbol::sprite = new wxImage("img/pieces_sprite.png");
 
     auto* frame = new Frame(nullptr, wxID_ANY, "Chess");
-    new Canvas(frame);
+    new Canvas(frame);//, "kbnqp///////k b KQkq - 0 1");
 
     // non-resizeable
     frame->SetMaxSize(frame->GetSize());
