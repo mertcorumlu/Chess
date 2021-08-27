@@ -27,6 +27,7 @@ constexpr static U64 a1h8_diagonal     = 0x8040201008040201;
 constexpr static U64 h1a8_antidiagonal = 0x0102040810204080;
 
 enum Square {
+    NONE = -1,
     A1, B1, C1, D1, E1, F1, G1, H1,
     A2, B2, C2, D2, E2, F2, G2, H2,
     A3, B3, C3, D3, E3, F3, G3, H3,
@@ -124,20 +125,26 @@ inline U64 shift(U64 b, Direction d) {
         return b >> -d;
 }
 
-inline U64 bin(U64 s) {
+inline void bin(U64 a) {
     for (int i = 0; i < 8; ++i) {
+        uint8_t s = (a & 0xff00000000000000) >> 56;
+        std::cout << 8 - i << "  ";
         for (int j = 0; j < 8; ++j) {
-
+            std::cout << ((s & 0x1) ? '1' : '.') << "  ";
+            s >>= 1;
         }
-        std::cout << ((s >> (63 - i)) & 1);
-        if (i % 7 == 0) std::cout << std::endl;
+        std::cout << std::endl;
+        a <<= 8;
     }
+
+    std::cout << "   a  b  c  d  e  f  g  h" << std::endl;
+    std::cout << std::endl;
 }
 
-inline U32 bin(U32 s) {
-    for (int i = 0; i < 32; ++i) {
-        std::cout << ((s >> (31 - i)) & 1);
-    }
-}
+//inline void bin(U32 s) {
+//    for (int i = 0; i < 32; ++i) {
+//        std::cout << ((s >> (31 - i)) & 1);
+//    }
+//}
 
 #endif //CHESS_TYPES_H

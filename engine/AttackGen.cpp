@@ -8,6 +8,7 @@
 #include "../types.h"
 
 #define DIRECTORY "bin"
+#include "../types.h"
 
 using namespace std;
 
@@ -41,6 +42,9 @@ private:
     U64 _rookTable[(1 << 12) * 25];
     U32 _rookOffsets[64];
 
+    // mask between two given square
+    U64 _maskBetween[64 * 64];
+    U64 _lineBetween[64 * 64];
 
     void _initBishopMasks();
     void _initRookMasks();
@@ -50,13 +54,15 @@ private:
     template<Piece::Type t>
     void _initSlidingTable();
 
+    void _initBetweens();
+
     void _writeFiles();
 
     template<Piece::Type t>
-    U32 _hash(U64 nonoccupied, U8 index) const;
+    U32 _hash(U64 occupied, U8 index) const;
 
     template<int dir>
-    static U64 _generateSlidingAttacks(U64 piece, U64 nonoccupied);
+    static U64 _generateSlidingAttacks(U64 piece, U64 occupied);
 };
 
 AttackGen::AttackGen() : _bishopMasks(), _rookMasks(), _nonSlidingTable(), _bishopTable(),
@@ -67,6 +73,8 @@ AttackGen::AttackGen() : _bishopMasks(), _rookMasks(), _nonSlidingTable(), _bish
     _initNonSlidingTable();
     _initSlidingTable<Piece::BISHOP>();
     _initSlidingTable<Piece::ROOK>();
+
+    _initBetweens();
 
     _writeFiles();
 }
@@ -181,30 +189,53 @@ void AttackGen::_initSlidingTable() {
 
         sum += offset;
 
-        U16 j = 0;
         U64 n = 0;
         do {
 
             // There we go
-            U64 nonoccupied = ~n;
 
             if constexpr(t == Piece::BISHOP) {
 
-                _bishopTable[_hash<t>(nonoccupied, i)] =
-                        _generateSlidingAttacks<7>(piece, nonoccupied) | _generateSlidingAttacks<9>(piece, nonoccupied) |
-                        _generateSlidingAttacks<-7>(piece, nonoccupied) | _generateSlidingAttacks<-9>(piece, nonoccupied);
+                _bishopTable[_hash<t>(n, i)] =
+                        _generateSlidingAttacks<7>(piece, n) | _generateSlidingAttacks<9>(piece, n) |
+                        _generateSlidingAttacks<-7>(piece, n) | _generateSlidingAttacks<-9>(piece, n);
 
             } else if constexpr(t == Piece::ROOK) {
-                _rookTable[_hash<t>(nonoccupied, i)] =
-                        _generateSlidingAttacks<1>(piece, nonoccupied) | _generateSlidingAttacks<-1>(piece, nonoccupied) |
-                        _generateSlidingAttacks<8>(piece, nonoccupied) | _generateSlidingAttacks<-8>(piece, nonoccupied);
+                _rookTable[_hash<t>(n, i)] =
+                        _generateSlidingAttacks<1>(piece, n) | _generateSlidingAttacks<-1>(piece, n) |
+                        _generateSlidingAttacks<8>(piece, n) | _generateSlidingAttacks<-8>(piece, n);
 
             }
 
             n = (n - mask) & mask;
-            ++j;
         } while(n);
 
+    }
+}
+
+void AttackGen::_initBetweens() {
+    // Must bu called after sliding piece table initialized.
+    for (int i = 0; i < 64; ++i) {
+        for (int j = 0; j < 64; ++j) {
+            U64 pi = 1UL << i;
+            U64 pj = 1UL << j;
+
+            if (_bishopTable[_hash<Piece::BISHOP>(0UL, i)] & pj) {
+                _maskBetween[i + j * 64] =
+                        _bishopTable[_hash<Piece::BISHOP>(pi, j)] & _bishopTable[_hash<Piece::BISHOP>(pj, i)];
+                _lineBetween[i + j * 64] =
+                        (_bishopTable[_hash<Piece::BISHOP>(0UL, j)] & _bishopTable[_hash<Piece::BISHOP>(0UL, i)]) | pi | pj;
+            } else if (_rookTable[_hash<Piece::ROOK>(0UL, i)] & pj) {
+                _maskBetween[i + j * 64] =
+                        _rookTable[_hash<Piece::ROOK>(pi, j)] & _rookTable[_hash<Piece::ROOK>(pj, i)];
+                _lineBetween[i + j * 64] =
+                        (_rookTable[_hash<Piece::ROOK>(0UL, j)] & _rookTable[_hash<Piece::ROOK>(0UL, i)]) | pi | pj;
+            } else {
+                _maskBetween[i + j * 64] = 0;
+                _lineBetween[i + j * 64] = 0;
+            }
+
+        }
     }
 }
 
@@ -223,7 +254,9 @@ void AttackGen::_writeFiles() {
             "_bishopTable",
             "_bishopOffsets",
             "_rookTable",
-            "_rookOffsets"
+            "_rookOffsets",
+            "_maskBetween",
+            "_lineBetween"
     };
 
     const char* arrays[] = {
@@ -233,7 +266,9 @@ void AttackGen::_writeFiles() {
             (char*)_bishopTable,
             (char*)_bishopOffsets,
             (char*)_rookTable,
-            (char*)_rookOffsets
+            (char*)_rookOffsets,
+            (char*)_maskBetween,
+            (char*)_lineBetween
     };
 
     const U32 sizes[] = {
@@ -243,10 +278,12 @@ void AttackGen::_writeFiles() {
             (1 << 7) * 41 * 8,
             64 * 4,
             (1 << 12) * 25 * 8,
-            64 * 4
+            64 * 4,
+            64 * 64 * 8,
+            64 * 64 * 8
     };
 
-    for (int i = 0; i < 7; ++i) {
+    for (int i = 0; i < 9; ++i) {
         string s = DIRECTORY;
         s.append("/");
         s.append(files[i]);
@@ -259,18 +296,20 @@ void AttackGen::_writeFiles() {
 }
 
 template<Piece::Type t>
-U32 AttackGen::_hash(U64 nonoccupied, U8 index) const {
+U32 AttackGen::_hash(U64 occupied, U8 index) const {
 
     if constexpr(t == Piece::BISHOP) {
-        return _bishopOffsets[index] + _pext_u64(nonoccupied, _bishopMasks[index]);
+        return _bishopOffsets[index] + _pext_u64(occupied, _bishopMasks[index]);
     } else if constexpr(t == Piece::ROOK) {
-        return _rookOffsets[index] + _pext_u64(nonoccupied, _rookMasks[index]);
+        return _rookOffsets[index] + _pext_u64(occupied, _rookMasks[index]);
     }
 
 }
 
 template<int dir>
-U64 AttackGen::_generateSlidingAttacks(U64 piece, U64 nonoccupied) {
+U64 AttackGen::_generateSlidingAttacks(U64 piece, U64 occupied) {
+
+    U64 nonoccupied = ~occupied;
 
     U64 mask = -1;
 

@@ -16,6 +16,8 @@ INCBIN(_bishopTable, "bin/_bishopTable.bin");
 INCBIN(_rookTable, "bin/_rookTable.bin");
 INCBIN(_bishopOffsets, "bin/_bishopOffsets.bin");
 INCBIN(_rookOffsets, "bin/_rookOffsets.bin");
+INCBIN(_maskBetween, "bin/_maskBetween.bin");
+INCBIN(_lineBetween, "bin/_lineBetween.bin");
 
 const U64 *const Attack::_nonSlidingTable = (U64 *) _nonSlidingTableData;;
 const U64 *const Attack::_bishopMasks = (U64 *) _bishopMasksData;
@@ -24,6 +26,8 @@ const U64 *const Attack::_bishopTable = (U64 *) _bishopTableData;
 const U64 *const Attack::_rookTable = (U64 *) _rookTableData;
 const U32 *const Attack::_bishopOffsets = (U32 *) _bishopOffsetsData;
 const U32 *const Attack::_rookOffsets = (U32 *) _rookOffsetsData;
+const U64 *const Attack::_maskBetween = (U64 *) _maskBetweenData;
+const U64 *const Attack::_lineBetween = (U64 *) _lineBetweenData;
 
 U64 Attack::nonSlidingAttacks(Piece::Type t, Square square, Piece::Color c) {
 
@@ -36,26 +40,40 @@ U64 Attack::nonSlidingAttacks(Piece::Type t, Square square, Piece::Color c) {
 
 }
 
-U64 Attack::slidingAttacks(Piece::Type t, Square square, U64 nonoccupied) {
+U64 Attack::slidingAttacks(Piece::Type t, Square square, U64 occupied) {
     switch (t) {
         case Piece::BISHOP:
-            return _bishopTable[_hash<Piece::BISHOP>(nonoccupied, square)];
+            return _bishopTable[_hash<Piece::BISHOP>(occupied, square)];
         case Piece::ROOK:
-            return _rookTable[_hash<Piece::ROOK>(nonoccupied, square)];
+            return _rookTable[_hash<Piece::ROOK>(occupied, square)];
         case Piece::QUEEN:
-            return _bishopTable[_hash<Piece::BISHOP>(nonoccupied, square)] | _rookTable[_hash<Piece::ROOK>(nonoccupied, square)];
+            return _bishopTable[_hash<Piece::BISHOP>(occupied, square)] | _rookTable[_hash<Piece::ROOK>(occupied, square)];
         default:
             throw std::invalid_argument("not a sliding peace");
     }
 }
 
+U64 Attack::xraySlidingAttacks(Square king, U64 occupied, U64 allies) {
+
+    // TODO seperate rook and bishop
+
+    // Same idea as slidingAttacks, but will remove attackers for king and recalculate attackers,
+    // so we get x-rayed attacks on king
+    U64 attackers = slidingAttacks(Piece::QUEEN, king, occupied);
+    U64 filter = allies & attackers; // find corresponding allies
+
+    // remove allies from occupancy and find attacks without ally blockers
+    // than remove non-occupied attacks
+    return (attackers ^ slidingAttacks(Piece::QUEEN, king, occupied ^ filter)) & (occupied ^ allies);
+}
+
 template <Piece::Type t>
-U32 Attack::_hash(U64 nonoccupied, Square square) {
+U32 Attack::_hash(U64 occupied, Square square) {
 
     if constexpr(t == Piece::BISHOP) {
-        return _bishopOffsets[square] + _pext_u64(nonoccupied, _bishopMasks[square]);
+        return _bishopOffsets[square] + _pext_u64(occupied, _bishopMasks[square]);
     } else if constexpr(t == Piece::ROOK) {
-        return _rookOffsets[square] + _pext_u64(nonoccupied, _rookMasks[square]);
+        return _rookOffsets[square] + _pext_u64(occupied, _rookMasks[square]);
     }
 
 }

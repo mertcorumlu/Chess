@@ -8,7 +8,7 @@
 #include <sstream>
 #include <iostream>
 
-Position::Position(Board &&board,  Piece::Color sideToMove,  Piece::Piece lastCaptured,
+Position::Position(Board board,  Piece::Color sideToMove,  Piece::Piece lastCaptured,
                     Square enPassantTarget,  Castling castlingRights,  int halfMoveCLock,
                     int fullMoveCounter, Square kingPos[2])
         : _board{board}, _sideToMove(sideToMove), _lastCaptured(lastCaptured), _enPassantTarget(enPassantTarget),
@@ -80,25 +80,22 @@ Position::Position(string &&fen) {
 
 U64 Position::squareAttackedBy(Square square, Piece::Color attacker) {
     U64 attackers = 0;
-    U64 nonoccupied = ~_board.getOccupied();
+    U64 occupied = _board.getOccupied();
 
     // Place that square the piece and see squares that attacks corresponds enemy occupancy;
     attackers |= (Attack::nonSlidingAttacks(Piece::KNIGHT, square) & _board.getKnights());
     attackers |= (Attack::nonSlidingAttacks(Piece::KING, square) & _board.getKings());
     attackers |= (Attack::nonSlidingAttacks(Piece::PAWN, square, Piece::Color(!attacker)) & _board.getPawns()); // Exception, place out pawn
-    attackers |= (Attack::slidingAttacks(Piece::ROOK, square, nonoccupied) & _board.getSlidingOrthogonal());
-    attackers |= (Attack::slidingAttacks(Piece::BISHOP, square, nonoccupied) & _board.getSlidingDiagonal());
+    attackers |= (Attack::slidingAttacks(Piece::ROOK, square, occupied) & _board.getSlidingOrthogonal());
+    attackers |= (Attack::slidingAttacks(Piece::BISHOP, square, occupied) & _board.getSlidingDiagonal());
     return attackers & (attacker ? _board.getBlack() : _board.getWhite());
 }
-
 
 template <Piece::Type t>
 void Position::generatePseudoLegalMoves() {
 
     Piece::Color c = _sideToMove;
     U64 allies = c ? _board.getBlack() : _board.getWhite();
-    U64 enemies = c ? _board.getWhite() : _board.getBlack();
-    U64 nonoccupied = ~_board.getOccupied();
     U64 pieces;
 
     if constexpr(t == Piece::KING) pieces = 1 << _kingPos[c];
@@ -115,14 +112,14 @@ void Position::generatePseudoLegalMoves() {
         if constexpr(t == Piece::KING || t == Piece::KNIGHT )
             attacks = Attack::nonSlidingAttacks(t, from);
         else if constexpr(t == Piece::ROOK || t == Piece::BISHOP || t == Piece::QUEEN)
-            attacks = Attack::slidingAttacks(t, from, nonoccupied);
+            attacks = Attack::slidingAttacks(t, from, _board.getOccupied());
 
         // We dont want attacks on friendly pieces
         attacks &= ~allies;
 
         while(attacks) {
             Square to = pop_lsb(attacks);
-//            _moves.push_back(make_move(from, to, Move::NORMAL));
+            _moves.push_back(make_move(from, to, Move::NORMAL));
         }
     }
 
@@ -135,13 +132,11 @@ void Position::generatePseudoLegalMoves() {
         if (_castlingRights & Castling::QUEEN & cColor) {
             U64 mask = shift(0b01110ULL, Direction(c ? 7 * UP : 0));
 
-            bin(mask);
-
             // There is a piece between
             if (_board.getOccupied() & mask) return;
 
             Square to;
-            if (!squareAttackedBy(pop_lsb(mask), enemy) && !squareAttackedBy(to = pop_lsb(mask), enemy) && squareAttackedBy(pop_lsb(mask), enemy)) {
+            if (!squareAttackedBy(pop_lsb(mask), enemy) && !squareAttackedBy(to = pop_lsb(mask), enemy) && !squareAttackedBy(pop_lsb(mask), enemy)) {
                 _moves.push_back(make_move(from, to, Move::CASTLING));
             }
         }
@@ -160,7 +155,6 @@ void Position::generatePseudoLegalMoves() {
         }
 
     }
-
 
 }
 
@@ -214,19 +208,6 @@ void Position::generatePseudoLegalMoves<Piece::PAWN>() {
 
 }
 
-template <Piece::Type t>
-void Position::generateLegalMoves() {
-
-}
-
-template <>
-void Position::generateLegalMoves<Piece::PAWN>() {
-
-}
-
-void Position::generateAllPseudoLegalMoves() {
-
-}
 
 void Position::generateAllLegalMoves() {
 
@@ -239,7 +220,7 @@ void Position::generateAllLegalMoves() {
         // Single check
         if (_checkers & (_checkers - 1)) {
             Square checker = pop_lsb(checkers);
-            U64 attackers = squareAttackedBy(checker, Piece::Color(!_sideToMove));
+            U64 attackers = squareAttackedBy(checker, _sideToMove);
 
             while (attackers) {
                 Square from = pop_lsb(attackers);
@@ -250,14 +231,21 @@ void Position::generateAllLegalMoves() {
         return;
     } else {
         // QUIET moves
-        generateLegalMoves<Piece::KNIGHT>();
-        generateLegalMoves<Piece::PAWN>();
-        generateLegalMoves<Piece::BISHOP>();
-        generateLegalMoves<Piece::ROOK>();
-        generateLegalMoves<Piece::QUEEN>();
-
+        generatePseudoLegalMoves<Piece::KNIGHT>();
+        generatePseudoLegalMoves<Piece::PAWN>();
+        generatePseudoLegalMoves<Piece::BISHOP>();
+        generatePseudoLegalMoves<Piece::ROOK>();
+        generatePseudoLegalMoves<Piece::QUEEN>();
     }
-    generateLegalMoves<Piece::KING>();
+
+    generatePseudoLegalMoves<Piece::KING>();
+
+
+    auto curr = _moves.begin();
+
+    while(curr != _moves.end()) {
+        //TODO Remove illegal moves
+    }
 }
 
 void Position::_findCheckers() {
@@ -358,7 +346,7 @@ Position Position::move(Square from, Square to) {
         halfMoves = -1;
     }
 
-    return Position(std::move(tmp), Piece::Color(_sideToMove), capturedPiece, en_passant, castling, ++halfMoves, ++_fullMoveCounter, kingPos);
+    return Position(tmp, Piece::Color(_sideToMove), capturedPiece, en_passant, castling, ++halfMoves, ++_fullMoveCounter, kingPos);
 }
 
 // toString method

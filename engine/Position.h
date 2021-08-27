@@ -12,7 +12,7 @@
 class Position {
 public:
 
-    Position(Board &&board, Piece::Color sideToMove, Piece::Piece lastCaptured,
+    Position(Board board, Piece::Color sideToMove, Piece::Piece lastCaptured,
              Square enPassantTarget, Castling castlingRights, int halfMoveCLock,
              int fullMoveCounter, Square kingPos[2]);
 
@@ -23,15 +23,9 @@ public:
     template <Piece::Type t>
     void generatePseudoLegalMoves();
 
-    template <Piece::Type t>
-    void generateLegalMoves();
-
-    void generateAllPseudoLegalMoves();
-
     void generateAllLegalMoves();
 
     Position move(Square from, Square to);
-
 
     // getters
     const Board &board() const;
@@ -71,6 +65,7 @@ private:
 
     void _findCheckers();
     void _findPinned();
+
 };
 
 std::ostream& operator<<(std::ostream &strm, const Position &a);
