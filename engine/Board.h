@@ -14,7 +14,7 @@ using namespace std;
 
 class Board {
 public:
-    Board(string &&fen = "nbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+    Board(string &&fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
 
     void add(Piece::Piece p, Square square);
     Piece::Piece remove(Square square);
@@ -53,8 +53,6 @@ public:
     U64 getKings() const;
     U64 getPawns() const;
 
-    static void printBoard(uint64_t a);
-
 private:
 
     // Bitboard
@@ -73,6 +71,13 @@ private:
     };
 
 };
+
+std::ostream& operator<<(std::ostream &strm, const Board &board);
+std::ostream& operator<<(std::ostream& strm, const Piece::Piece& piece);
+std::ostream& operator<<(std::ostream& strm, const Square& square);
+std::ostream& operator<<(std::ostream& strm, const Castling& castling);
+std::ostream& operator<<(std::ostream& strm, const Move::Move& move);
+
 
 
 #endif //CHESS_BOARD_H

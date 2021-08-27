@@ -73,5 +73,7 @@ private:
     void _findPinned();
 };
 
+std::ostream& operator<<(std::ostream &strm, const Position &a);
+
 
 #endif //CHESS_POSITION_H

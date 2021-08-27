@@ -66,11 +66,11 @@ Piece::Color Board::colorOf(Piece::Piece p) {
 }
 
 Piece::Type Board::typeOf(Piece::Piece p) {
-    return Piece::Type(p & type_mask);
+    return Piece::Type((p & type_mask) >> 1);
 }
 
 Piece::Piece Board::merge(Piece::Color c, Piece::Type t) {
-    return Piece::Piece(t | c);
+    return Piece::Piece( (t << 1) | c);
 }
 
 Square Board::squareOf(U8 x, U8 y) {
@@ -80,7 +80,7 @@ Square Board::squareOf(U8 x, U8 y) {
 U256 Board::getTypeArray(Piece::Piece p) {
    Piece::Type t  = typeOf(p);
    Piece::Color c = colorOf(p);
-    return type_arr[c * 6 + (t>>1)];
+    return type_arr[c * 6 + t];
 }
 
 U64 Board::getBlack() const {
@@ -141,19 +141,63 @@ Piece::Piece Board::Proxy::operator[](U8 y) const {
     return board.pieceAt(squareOf(x, y));
 }
 
-void Board::printBoard(U64 a) {
-
-    for (int i = 0; i < 8; ++i) {
-        uint8_t s = (a & 0xff00000000000000) >> 56;
-        cout << 8 - i << "  ";
-        for (int j = 0; j < 8; ++j) {
-            cout << ((s & 0x1) ? '1' : '.') << "  ";
-            s >>= 1;
+std::ostream& operator<<(std::ostream& strm, const Board& board) {
+    strm << "  +---+---+---+---+---+---+---+---+\n";
+    for (int y = 7; y >= 0; --y) {
+        strm << (y + 1) << " ";
+        for (int x = 0; x < 8; ++x) {
+            strm <<"| " << board.pieceAt(Board::squareOf(x, y)) << " ";
         }
-        cout << endl;
-        a <<= 8;
+        strm << "|\n  +---+---+---+---+---+---+---+---+\n";;
+    }
+    strm << "    A   B   C   D   E   F   G   H\n";
+    return strm;
+}
+
+std::ostream& operator<<(std::ostream& strm, const Piece::Piece& piece) {
+    char tmp;
+    switch(Piece::Type(piece >> 1)) {
+        case Piece::KING: tmp = 'k'; break;
+        case Piece::KNIGHT: tmp = 'n'; break;
+        case Piece::BISHOP: tmp = 'b'; break;
+        case Piece::ROOK: tmp = 'r'; break;
+        case Piece::PAWN: tmp = 'p'; break;
+        case Piece::QUEEN: tmp = 'q'; break;
+        case Piece::NONE: return strm << ' ';
     }
 
-    cout << "   a  b  c  d  e  f  g  h" << endl;
-    cout << endl;
+    return strm << ((piece & 1) ? tmp : (char)(tmp - 32));
+}
+
+std::ostream& operator<<(std::ostream& strm, const Square& square) {
+    if (square < 0) return strm << '-';
+    int x = square % 8;
+    int y = (square - x) / 8;
+    strm << (char)('A' + x) << (char)('1' + y);
+    return strm;
+}
+
+std::ostream& operator<<(std::ostream& strm, const Castling& castling) {
+    if (castling & Castling::WHITE_K)  strm << 'K';
+    if (castling & Castling::WHITE_Q)  strm << 'Q';
+    if (castling & Castling::BLACK_K)  strm << 'k';
+    if (castling & Castling::BLACK_Q)  strm << 'q';
+    return strm;
+}
+
+std::ostream& operator<<(std::ostream& strm, const Move::Move& move) {
+    strm << '{';
+    strm << Square(move & 0x3f);
+    strm << "->";
+    strm << Square((move >> 6) & 0x3f);
+    strm << " | ";
+    switch (Move::Type((move >> 12) & 0x3))
+    {
+        case Move::CASTLING: strm << "CS"; break;
+        case Move::EN_PASSANT: strm << "EP"; break;
+        case Move::NORMAL: strm << "NM"; break;
+        case Move::PROMOTION: strm << "PM"; break;
+    }
+    strm << '}';
+    return strm;
 }
