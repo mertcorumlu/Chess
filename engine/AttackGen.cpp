@@ -215,25 +215,29 @@ void AttackGen::_initSlidingTable() {
 
 void AttackGen::_initBetweens() {
     // Must bu called after sliding piece table initialized.
-    for (int i = 0; i < 64; ++i) {
-        for (int j = 0; j < 64; ++j) {
-            U64 pi = 1UL << i;
-            U64 pj = 1UL << j;
+    // excludes from square but includes to
+    // If from and to does not correspond return to square
+    for (int from = 0; from < 64; ++from) {
+        for (int to = 0; to < 64; ++to) {
+            U64 pFrom = 1UL << from;
+            U64 pTo = 1UL << to;
 
-            if (_bishopTable[_hash<Piece::BISHOP>(0UL, i)] & pj) {
-                _maskBetween[i + j * 64] =
-                        _bishopTable[_hash<Piece::BISHOP>(pi, j)] & _bishopTable[_hash<Piece::BISHOP>(pj, i)];
-                _lineBetween[i + j * 64] =
-                        (_bishopTable[_hash<Piece::BISHOP>(0UL, j)] & _bishopTable[_hash<Piece::BISHOP>(0UL, i)]) | pi | pj;
-            } else if (_rookTable[_hash<Piece::ROOK>(0UL, i)] & pj) {
-                _maskBetween[i + j * 64] =
-                        _rookTable[_hash<Piece::ROOK>(pi, j)] & _rookTable[_hash<Piece::ROOK>(pj, i)];
-                _lineBetween[i + j * 64] =
-                        (_rookTable[_hash<Piece::ROOK>(0UL, j)] & _rookTable[_hash<Piece::ROOK>(0UL, i)]) | pi | pj;
+            if (_bishopTable[_hash<Piece::BISHOP>(0UL, from)] & pTo) {
+                _maskBetween[to + from * 64] =
+                        _bishopTable[_hash<Piece::BISHOP>(pFrom, to)] & _bishopTable[_hash<Piece::BISHOP>(pTo, from)];
+                _lineBetween[to + from * 64] =
+                        (_bishopTable[_hash<Piece::BISHOP>(0UL, to)] & _bishopTable[_hash<Piece::BISHOP>(0UL, from)]) | pFrom | pTo;
+            } else if (_rookTable[_hash<Piece::ROOK>(0UL, from)] & pTo) {
+                _maskBetween[to + from * 64] =
+                        _rookTable[_hash<Piece::ROOK>(pFrom, to)] & _rookTable[_hash<Piece::ROOK>(pTo, from)];
+                _lineBetween[to + from * 64] =
+                        (_rookTable[_hash<Piece::ROOK>(0UL, to)] & _rookTable[_hash<Piece::ROOK>(0UL, from)]) | pFrom | pTo;
             } else {
-                _maskBetween[i + j * 64] = 0;
-                _lineBetween[i + j * 64] = 0;
+                _maskBetween[to + from * 64] = 0;
+                _lineBetween[to + from * 64] = 0;
             }
+
+            _maskBetween[to + from * 64] |= pTo;
 
         }
     }

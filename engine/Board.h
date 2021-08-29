@@ -21,9 +21,6 @@ public:
     void move(Square from, Square to);
 
     Piece::Piece pieceAt(Square square) const;
-    static Piece::Color colorOf(Piece::Piece p);
-    static Piece::Type typeOf(Piece::Piece p);
-    static Piece::Piece merge(Piece::Color, Piece::Type);
 
 private:
     class Proxy {
@@ -57,9 +54,6 @@ private:
 
     // Bitboard
     U256 quadboard;
-
-    constexpr static U8 type_mask  = 0b1110;
-    constexpr static U8 color_mask = ~type_mask;
 
     constexpr static U256 type_arr[13] = {
             {0, 0, 0, 0},

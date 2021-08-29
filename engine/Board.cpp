@@ -61,18 +61,6 @@ Piece::Piece Board::pieceAt(Square square) const {
    return Piece::Piece(_pext_u32(val, 0x80808080));
 }
 
-Piece::Color Board::colorOf(Piece::Piece p) {
-    return Piece::Color(p & color_mask);
-}
-
-Piece::Type Board::typeOf(Piece::Piece p) {
-    return Piece::Type((p & type_mask) >> 1);
-}
-
-Piece::Piece Board::merge(Piece::Color c, Piece::Type t) {
-    return Piece::Piece( (t << 1) | c);
-}
-
 Square Board::squareOf(U8 x, U8 y) {
     return Square(x + (y << 3)); // x + 8 * y
 }

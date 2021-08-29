@@ -22,10 +22,14 @@ public:
 
     static U64 nonSlidingAttacks(Piece::Type t, Square square, Piece::Color c = Piece::WHITE);
     static U64 slidingAttacks(Piece::Type t, Square Square, U64 occupied);
+
+    template <Piece::Type t>
     static U64 xraySlidingAttacks(Square king, U64 occupied, U64 allies);
 
-private:
+    static U64 maskBetween(Square from, Square to);
+    static U64 lineBetween(Square from, Square to);
 
+private:
     static const U64 *const _nonSlidingTable;
     static const U64 *const _bishopMasks;
     static const U64 *const _rookMasks;

@@ -6,26 +6,28 @@
 #define CHESS_POSITION_H
 
 #include <vector>
+#include <stack>
 #include "../types.h"
 #include "Board.h"
 
 class Position {
 public:
 
-    Position(Board board, Piece::Color sideToMove, Piece::Piece lastCaptured,
-             Square enPassantTarget, Castling castlingRights, int halfMoveCLock,
-             int fullMoveCounter, Square kingPos[2]);
+//    Position(Board board, Piece::Color sideToMove, Piece::Piece lastCaptured,
+//             Square enPassantTarget, Castling castlingRights, int halfMoveCLock,
+//             int fullMoveCounter, Square kingPos[2]);
 
     Position(string&& fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     U64 squareAttackedBy(Square square, Piece::Color attacker = Piece::WHITE);
 
     template <Piece::Type t>
-    void generatePseudoLegalMoves();
+    void generatePseudoLegalMoves(MoveList& _moves);
 
-    void generateAllLegalMoves();
+    void generateAllLegalMoves(MoveList& _moves);
 
-    Position move(Square from, Square to);
+    void do_move(Move::Move move);
+    void undo_move(Move::Move move);
 
     // getters
     const Board &board() const;
@@ -51,24 +53,30 @@ public:
     const Square *kingPos() const;
 
 private:
+    struct State {
+        Piece::Piece _lastCaptured;
+        Castling _castlingRights;
+        U64 _checkers;
+        U64 _pinned;
+        int _halfMoveClock;
+    };
     Board _board;
     Piece::Color _sideToMove;
-    Piece::Piece _lastCaptured;
     Square _enPassantTarget;
-    Castling _castlingRights;
-    int _halfMoveClock;
     int _fullMoveCounter;
-    MoveList _moves;
-    U64 _checkers;
-    U64 _pinned;
     Square _kingPos[2];
+    stack<shared_ptr<State>> _states;
+    shared_ptr<State> currState;
 
     void _findCheckers();
     void _findPinned();
+public:
+    bool _isLegal(const Move::Move& move);
 
 };
 
 std::ostream& operator<<(std::ostream &strm, const Position &a);
+std::ostream& operator<<(std::ostream &strm, const MoveList &a);
 
 
 #endif //CHESS_POSITION_H

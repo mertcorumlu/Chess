@@ -13,13 +13,20 @@ using namespace std;
 
 int main() {
 
-    Position p("4r3///4b3//4R3//4K3 w Kkq - 0 1");
-    p.generatePseudoLegalMoves<Piece::KING>();
-    cout << p.board() << endl;
-    bin(Attack::xraySlidingAttacks(p.kingPos()[0], p.board().getOccupied(), p.board().getWhite()));
+    Position p("3b4/4kp2/1p6/6P1/8/8/2PK1B2/8 w - - 0 1");
+    cout << p << endl;
 
+    p.do_move(make_move(F2, B6, Move::Type::NORMAL));
 
-//    Board b("/4R/4r/1b/2B1R//RrR1K1R/");
-//    cout << b << endl;
+    cout << p << endl;
+    p.do_move(make_move(D8, B6, Move::Type::NORMAL));
+
+    cout << p << endl;
+
+//    MoveList list;
+//    list.reserve(256);
+//    p.generateAllLegalMoves(list);
+//    cout << list << endl;
+//    cout << list.size() << endl;
 
 }

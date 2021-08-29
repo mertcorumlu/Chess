@@ -38,6 +38,10 @@ enum Square {
     A8, B8, C8, D8, E8, F8, G8, H8
 };
 
+inline U64 square_to_board(const Square& square) {
+    return 1UL << square;
+}
+
 namespace Piece {
 
     enum Color : bool {
@@ -57,6 +61,18 @@ namespace Piece {
         bPawn = 0b0011, bKnight = 0b0101, bBishop = 0b0111, bRook = 0b1001, bQueen = 0b1011, bKing = 0b1101
     };
 
+}
+
+inline Piece::Color colorOf(Piece::Piece p) {
+    return Piece::Color(p & 0x1);
+}
+
+inline Piece::Type typeOf(Piece::Piece p) {
+    return Piece::Type((p & 0xe) >> 1);
+}
+
+inline Piece::Piece merge(Piece::Color c, Piece::Type t) {
+    return Piece::Piece( (t << 1) | c);
 }
 
 namespace Move {
@@ -79,8 +95,20 @@ namespace Move {
     };
 }
 
-inline Move::Move make_move(Square from, Square to, Move::Type type){
+inline Move::Move make_move(const Square& from, const Square& to, const Move::Type& type){
     return Move::Move(from | (to << 6) | (type << 12));
+}
+
+inline Move::Type move_type(const Move::Move& move) {
+    return Move::Type((move >> 12) & 0xf);
+}
+
+inline Square move_from(const Move::Move& move) {
+    return Square(move & 0x3f);
+}
+
+inline Square move_to(const Move::Move& move) {
+    return Square((move >> 6) & 0x3f);
 }
 
 enum Castling{
@@ -101,7 +129,7 @@ enum Castling{
 
 using MoveList = std::vector<Move::Move>;
 
-inline Square lsb(U64 a) {
+inline Square lsb(const U64& a) {
     return Square(std::__libcpp_ctz(a));
 }
 
@@ -146,5 +174,12 @@ inline void bin(U64 a) {
 //        std::cout << ((s >> (31 - i)) & 1);
 //    }
 //}
+
+// return if given number a power of two or zero
+// power of two means just 1 bit set in the number
+// used to check if there is single checker
+inline bool powerOfTwo(U64 x) {
+    return (x & (x - 1)) == 0;
+}
 
 #endif //CHESS_TYPES_H

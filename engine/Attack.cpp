@@ -53,18 +53,25 @@ U64 Attack::slidingAttacks(Piece::Type t, Square square, U64 occupied) {
     }
 }
 
+template <Piece::Type t>
 U64 Attack::xraySlidingAttacks(Square king, U64 occupied, U64 allies) {
-
-    // TODO seperate rook and bishop
 
     // Same idea as slidingAttacks, but will remove attackers for king and recalculate attackers,
     // so we get x-rayed attacks on king
-    U64 attackers = slidingAttacks(Piece::QUEEN, king, occupied);
-    U64 filter = allies & attackers; // find corresponding allies
+    U64 attackers = slidingAttacks(t, king, occupied);
+    allies &= attackers; // find corresponding allies
 
     // remove allies from occupancy and find attacks without ally blockers
     // than remove non-occupied attacks
-    return (attackers ^ slidingAttacks(Piece::QUEEN, king, occupied ^ filter)) & (occupied ^ allies);
+    return attackers ^ slidingAttacks(t, king, occupied ^ allies);
+}
+
+U64 Attack::maskBetween(Square from, Square to) {
+    return _maskBetween[to + from * 64];
+}
+
+U64 Attack::lineBetween(Square from, Square to) {
+    return _lineBetween[from + to * 64];
 }
 
 template <Piece::Type t>
@@ -81,3 +88,6 @@ U32 Attack::_hash(U64 occupied, Square square) {
 // Template explicit instantiation for library
 template U32 Attack::_hash<Piece::BISHOP>(U64, Square);
 template U32 Attack::_hash<Piece::ROOK>(U64, Square);
+
+template U64 Attack::xraySlidingAttacks<Piece::BISHOP>(Square king, U64 occupied, U64 allies);
+template U64 Attack::xraySlidingAttacks<Piece::ROOK>(Square king, U64 occupied, U64 allies);
