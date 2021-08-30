@@ -75,6 +75,7 @@ inline Piece::Piece merge(Piece::Color c, Piece::Type t) {
     return Piece::Piece( (t << 1) | c);
 }
 
+//TODO moves should be encoded better, and do_move and undo_move should be changed accordingly
 namespace Move {
     /*
    * bits[15-12] : Type
@@ -88,11 +89,41 @@ namespace Move {
     };
 
     enum Type : U8 {
-        NORMAL,
-        PROMOTION,
-        EN_PASSANT,
-        CASTLING
+        QUIET,
+        D_PAWN_PUSH,
+        CASTLE_K,
+        CASTLE_Q,
+        CAPTURE,
+        EP_CAPTURE,
+        PROMOTION_K,
+        PROMOTION_B,
+        PROMOTION_R,
+        PROMOTION_Q,
+        PROMOCAP_N,
+        PROMOCAP_B,
+        PROMOCAP_R,
+        PROMOCAP_Q,
     };
+}
+
+inline bool move_quiet(const Move::Type& type) {
+    return type == 0;
+}
+
+inline bool move_castle(const Move::Type& type) {
+    return type == Move::CASTLE_K || type == Move::CASTLE_Q;
+}
+
+inline bool move_ep(const Move::Type& type) {
+    return type == Move::EP_CAPTURE;
+}
+
+inline bool move_capture(const Move::Type& type) {
+    return type == Move::CAPTURE ||type == Move::EP_CAPTURE;
+}
+
+inline bool move_promotion(const Move::Type& type) {
+    return (type >> 3) & 1;
 }
 
 inline Move::Move make_move(const Square& from, const Square& to, const Move::Type& type){

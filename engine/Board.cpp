@@ -161,7 +161,7 @@ std::ostream& operator<<(std::ostream& strm, const Square& square) {
     if (square < 0) return strm << '-';
     int x = square % 8;
     int y = (square - x) / 8;
-    strm << (char)('A' + x) << (char)('1' + y);
+    strm << (char)('a' + x) << (char)('1' + y);
     return strm;
 }
 
@@ -175,16 +175,21 @@ std::ostream& operator<<(std::ostream& strm, const Castling& castling) {
 
 std::ostream& operator<<(std::ostream& strm, const Move::Move& move) {
     strm << '{';
-    strm << Square(move & 0x3f);
+    strm << move_from(move);
     strm << "->";
-    strm << Square((move >> 6) & 0x3f);
+    strm << move_to(move);
     strm << " | ";
-    switch (Move::Type((move >> 12) & 0x3))
+    switch (move_type(move))
     {
-        case Move::CASTLING: strm << "CS"; break;
-        case Move::EN_PASSANT: strm << "EP"; break;
-        case Move::NORMAL: strm << "NM"; break;
-        case Move::PROMOTION: strm << "PM"; break;
+        case Move::CASTLE_K: case Move::CASTLE_Q: strm << "CS"; break;
+        case Move::EP_CAPTURE: strm << "EP"; break;
+        case Move::QUIET: strm << "QU"; break;
+        case Move::D_PAWN_PUSH: strm << "DP"; break;
+        default:
+            if (move_promotion(move_type(move))) {
+                strm << "PM";
+            }
+            break;
     }
     strm << '}';
     return strm;

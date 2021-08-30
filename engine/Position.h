@@ -20,6 +20,7 @@ public:
     Position(string&& fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     U64 squareAttackedBy(Square square, Piece::Color attacker = Piece::WHITE);
+    U64 squareAttackedBy(Square square, U64 occupied, Piece::Color attacker = Piece::WHITE);
 
     template <Piece::Type t>
     void generatePseudoLegalMoves(MoveList& _moves);
@@ -66,10 +67,11 @@ private:
     int _fullMoveCounter;
     Square _kingPos[2];
     stack<shared_ptr<State>> _states;
-    shared_ptr<State> currState;
+    shared_ptr<State> _currState;
 
     void _findCheckers();
     void _findPinned();
+
 public:
     bool _isLegal(const Move::Move& move);
 
