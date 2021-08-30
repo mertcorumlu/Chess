@@ -136,7 +136,7 @@ void AttackGen::_initNonSlidingTable() {
 
             // King Attacks
             U64 king = piece;
-            U64 l = (piece >> 1) & ~GFile;
+            U64 l = (piece >> 1) & ~HFile;
             U64 r = (piece << 1) & ~AFile;
             U64 attacks = l | r;
             king |= attacks;

@@ -95,14 +95,14 @@ namespace Move {
         CASTLE_Q,
         CAPTURE,
         EP_CAPTURE,
-        PROMOTION_K,
-        PROMOTION_B,
-        PROMOTION_R,
-        PROMOTION_Q,
-        PROMOCAP_N,
-        PROMOCAP_B,
-        PROMOCAP_R,
-        PROMOCAP_Q,
+        PROMOTION_N = 8,
+        PROMOTION_B = 9,
+        PROMOTION_R = 10,
+        PROMOTION_Q = 11,
+        PROMOCAP_N = 12,
+        PROMOCAP_B = 13,
+        PROMOCAP_R = 14,
+        PROMOCAP_Q = 15,
     };
 }
 
@@ -119,7 +119,7 @@ inline bool move_ep(const Move::Type& type) {
 }
 
 inline bool move_capture(const Move::Type& type) {
-    return type == Move::CAPTURE ||type == Move::EP_CAPTURE;
+    return type == Move::CAPTURE || type == Move::EP_CAPTURE || type >= 12;
 }
 
 inline bool move_promotion(const Move::Type& type) {

@@ -3,4 +3,4 @@ chess-cpp-master
 cmake-build-debug
 .DS_Store
 cmake-build-release
-engine/bin
+src/engine/bin

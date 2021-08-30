@@ -1,0 +1,5 @@
+include(doctest)
+
+add_executable(moveGenerationTest MoveGenerationTest.cpp)
+target_link_libraries(moveGenerationTest doctest::doctest chessEngine)
+doctest_discover_tests(moveGenerationTest)

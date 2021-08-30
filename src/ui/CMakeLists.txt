@@ -6,7 +6,7 @@ target_include_directories(chessUI PUBLIC /usr/local/lib/wx/include/osx_cocoa-un
 target_include_directories(chessUI PUBLIC /usr/local/include/wx-3.1)
 
 # Include UI Headers
-target_include_directories(chessUI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(chessUI PUBLIC .)
 
 # Link WX Libraries
 target_link_directories(chessUI PUBLIC /usr/local/lib)
@@ -18,4 +18,4 @@ target_compile_options(chessUI PUBLIC -D__WXOSX_COCOA__)
 # Copy images to binary dir
 add_custom_command(TARGET chessUI PRE_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_CURRENT_SOURCE_DIR}/img ${CMAKE_BINARY_DIR}/img)
+        img ${CMAKE_BINARY_DIR}/img)

@@ -151,19 +151,6 @@ void Position::generatePseudoLegalMoves(MoveList& _moves) {
         Square from = c ? Square::E8 : Square::E1;
         auto enemy = Piece::Color(!c);
 
-        if (_currState->_castlingRights & Castling::QUEEN & cColor) {
-            U64 mask = shift(0b01110ULL, Direction(c ? 7 * UP : 0));
-
-            // There is a piece between
-            if (!(_board.getOccupied() & mask)) {
-                Square to;
-                if (!squareAttackedBy(pop_lsb(mask), enemy) && !squareAttackedBy(to = pop_lsb(mask), enemy) &&
-                    !squareAttackedBy(pop_lsb(mask), enemy)) {
-                    _moves.push_back(make_move(from, to, Move::CASTLE_Q));
-                }
-            }
-        }
-
         if (_currState->_castlingRights & Castling::KING & cColor) {
             U64 mask = shift(0b0110'0000ULL, Direction(c ? 7 * UP : 0));
 
@@ -176,6 +163,21 @@ void Position::generatePseudoLegalMoves(MoveList& _moves) {
             }
         }
 
+        if (_currState->_castlingRights & Castling::QUEEN & cColor) {
+            U64 mask = shift(0b1110ULL, Direction(c ? 7 * UP : 0));
+
+            // There is a piece between
+            if (!(_board.getOccupied() & mask)) {
+                Square to;
+                // Spend one bit for nothing, because B1/8 square is not considered if attacked,
+                // But could not be occupied anyway
+                pop_lsb(mask);
+                if (!squareAttackedBy(to = pop_lsb(mask), enemy) && !squareAttackedBy(pop_lsb(mask), enemy)) {
+                    _moves.push_back(make_move(from, to, Move::CASTLE_Q));
+                }
+            }
+        }
+
     }
 
 }
@@ -183,7 +185,7 @@ void Position::generatePseudoLegalMoves(MoveList& _moves) {
 template<>
 void Position::generatePseudoLegalMoves<Piece::PAWN>(MoveList& _moves) {
 
-    // Implement Promotions
+    //TODO Implement Promotions
 
     Piece::Color c = _sideToMove;
     U64 enemies = c ? _board.getWhite() : _board.getBlack();
@@ -200,14 +202,23 @@ void Position::generatePseudoLegalMoves<Piece::PAWN>(MoveList& _moves) {
 
     while (single) {
         Square square = pop_lsb(single);
-        _moves.push_back(make_move(Square(square - pushDirection), square, Move::QUIET));
+        auto from = Square(square - pushDirection);
+        // If single move lands on opposite rank, than add promotions
+        if (square_to_board(square) & (c ? rank1 : rank8)) {
+
+            _moves.push_back(make_move(from, square, Move::PROMOTION_Q));
+            _moves.push_back(make_move(from, square, Move::PROMOTION_R));
+            _moves.push_back(make_move(from, square, Move::PROMOTION_B));
+            _moves.push_back(make_move(from, square, Move::PROMOTION_N));
+
+        } else
+            _moves.push_back(make_move(from, square, Move::QUIET));
     }
 
     while (doubles) {
         Square square = pop_lsb(doubles);
         _moves.push_back(make_move(Square(square - 2 * pushDirection), square, Move::D_PAWN_PUSH));
     }
-
 
     // En Passant
     if (_enPassantTarget != Square::NONE) {
@@ -226,11 +237,19 @@ void Position::generatePseudoLegalMoves<Piece::PAWN>(MoveList& _moves) {
 
         while (attacks) {
             Square to = pop_lsb(attacks);
-            _moves.push_back(make_move(from, to, Move::CAPTURE));
+
+            if (square_to_board(to) & (c ? rank1 : rank8)) {
+
+                _moves.push_back(make_move(from, to, Move::PROMOCAP_Q));
+                _moves.push_back(make_move(from, to, Move::PROMOCAP_R));
+                _moves.push_back(make_move(from, to, Move::PROMOCAP_B));
+                _moves.push_back(make_move(from, to, Move::PROMOCAP_N));
+
+            } else
+                _moves.push_back(make_move(from, to, Move::CAPTURE));
         }
 
     }
-
 
 }
 
@@ -362,15 +381,15 @@ void Position::do_move(Move::Move move) {
         // Also update king position
         _kingPos[c] = to;
 
-    } else if (typeOf(moved) == Piece::ROOK || typeOf(captured) == Piece::ROOK) {
+    } else if (typeOf(moved) == Piece::ROOK) {
         // Moving rooks ends up in losing castling rights
         Square qTarget = c ? A8 : A1;
         Square kTarget = c ? H8 : H1;
 
-        if (from == qTarget || to == qTarget) {
+        if (from == qTarget) {
             Castling rights = c ? Castling::BLACK_Q : Castling::WHITE_Q;
             castling = Castling(castling & ~rights);
-        } else if (from == kTarget || to == kTarget) {
+        } else if (from == kTarget) {
             Castling rights = c ? Castling::BLACK_K : Castling::WHITE_K;
             castling = Castling(castling & ~rights);
         }
@@ -388,11 +407,38 @@ void Position::do_move(Move::Move move) {
     }
 
     if (captured != Piece::Empty) {
+
+        if (typeOf(captured) == Piece::ROOK) {
+            // capturing rooks ends up in losing castling rights for opponent
+            Square qTarget = c ? A1 : A8;
+            Square kTarget = c ? H1 : H8;
+
+            if (to == qTarget) {
+                Castling rights = c ? Castling::WHITE_Q : Castling::BLACK_Q;
+                castling = Castling(castling & ~rights);
+            } else if (to == kTarget) {
+                Castling rights = c ? Castling::WHITE_K : Castling::BLACK_K;
+                castling = Castling(castling & ~rights);
+            }
+        }
+
         halfMoves = -1;
     }
 
     // Move piece on board
-    _board.move(from, to);
+    if (move_promotion(type)) {
+        _board.remove(from);
+        _board.remove(to);
+        switch (type) {
+            case Move::PROMOTION_B: case Move::PROMOCAP_B: _board.add(merge(c, Piece::BISHOP), to); break;
+            case Move::PROMOTION_R: case Move::PROMOCAP_R: _board.add(merge(c, Piece::ROOK), to); break;
+            case Move::PROMOTION_Q: case Move::PROMOCAP_Q: _board.add(merge(c, Piece::QUEEN), to); break;
+            case Move::PROMOTION_N: case Move::PROMOCAP_N: _board.add(merge(c, Piece::KNIGHT), to); break;
+            default: break; // silence the clang-tidy...
+        }
+    } else {
+        _board.move(from, to);
+    }
 
     _currState->_halfMoveClock = ++halfMoves;
     _currState->_lastCaptured = captured;
@@ -413,26 +459,34 @@ void Position::undo_move(Move::Move move) {
     _states.pop();
     auto prevState = _states.top();
 
+    _sideToMove = Piece::Color(!_sideToMove);
+
     Move::Type type = move_type(move);
     Square from = move_from(move);
     Square to = move_to(move);
     Piece::Color c = _sideToMove;
 
     // Redo move on board
-    _board.move(to, from);
+    if (move_promotion(type)) {
+        _board.remove(to);
+        _board.remove(from);
+        _board.add(merge(c, Piece::PAWN), from);
+    } else {
+        _board.move(to, from);
+    }
 
     // Handle special cases
 
     // recover king position
     if (typeOf(_board.pieceAt(from)) == Piece::KING) {
-        _kingPos[Piece::Color(!c)] = from;
+        _kingPos[c] = from;
     }
 
     // respawn captured piece (careful en passant)
     if (move_capture(type)) {
 
         if(type == Move::EP_CAPTURE) {
-            _board.add(_currState->_lastCaptured, Square(to + (c ? -1 : +1) * 8));
+            _board.add(_currState->_lastCaptured, Square(to + (c ? +1 : -1) * 8));
             _enPassantTarget = to;
         }
         else
@@ -449,8 +503,8 @@ void Position::undo_move(Move::Move move) {
         }
     }
 
+    // Retrieve state
     _currState = std::move(prevState);
-    _sideToMove = Piece::Color(!_sideToMove);
     --_fullMoveCounter;
 }
 

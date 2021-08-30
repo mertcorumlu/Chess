@@ -30,27 +30,33 @@ unsigned long long search(Position pos, int maxDepth, int currDepth) {
 }
 
 int main() {
-    Position p("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    Position p("r3k2r/p1ppqpb1/bn2pn2/3PN1p1/4P3/1pN2Q1p/PPPBBPPP/R4R1K w kq - 0 3");
 
     MoveList moves;
     moves.reserve(256);
 
-//    cout << p._isLegal(make_move(F6,F5, Move::QUIET)) << endl;
+//    cout << p._isLegal(make_move(E8,C8, Move::CASTLE_Q)) << endl;
 
 //    cout << p << endl;
-//    p.do_move(make_move(A5, B6, Move::EP_CAPTURE));
+//    p.do_move(make_move(G2, H1, Move::PROMOCAP_B));
 //    cout << p << endl;
-//    p.undo_move(make_move(A5, B6, Move::EP_CAPTURE));
+//    p.undo_move(make_move(G2, H1, Move::PROMOCAP_B));
 //    cout << p << endl;
 //    p.do_move(make_move(A1, A4, Move::QUIET));
 //    p.undo_move(make_move(A1, A4, Move::QUIET));
 
     p.generateAllLegalMoves(moves);
-    for (auto& move : moves) {
+//    U64 occ = p.board().getOccupied();
+//    Square kingpos[2] = {p.kingPos()[0], p.kingPos()[1]};
+    for (const auto& move : moves) {
         p.do_move(move);
-        cout << move_from(move) << move_to(move) << ": " << search(p, 7, 2) << endl;
-//        cout << move_from(move) << move_to(move) << ": 1" << endl;
+//        cout << move_from(move) << move_to(move) << ": " << search(p, 2, 2) << endl;
+        cout << move_from(move) << move_to(move) << ": 1" << endl;
+//        cout << move << endl;
         p.undo_move(move);;
+//        if (occ != p.board().getOccupied()) {
+//            cout << move << endl;
+//        }
     }
 
 //    MoveList list;
