@@ -109,7 +109,7 @@ U64 Position::squareAttackedBy(Square square, U64 occupied, Piece::Color attacke
 }
 
 template<Piece::Type t>
-void Position::generatePseudoLegalMoves(MoveList& _moves) {
+void Position::generatePseudoLegalMoves(MoveList &_moves) {
 
     Piece::Color c = _sideToMove;
     U64 allies = c ? _board.getBlack() : _board.getWhite();
@@ -121,7 +121,7 @@ void Position::generatePseudoLegalMoves(MoveList& _moves) {
     else if constexpr(t == Piece::BISHOP) pieces = _board.getBishops() & allies;
     else if constexpr(t == Piece::QUEEN) pieces = _board.getQueens() & allies;
 
-    while(pieces) {
+    while (pieces) {
         //TODO already know kings position
         // see if adding hat constexpr condition makes it faster
         Square from = pop_lsb(pieces);
@@ -183,9 +183,7 @@ void Position::generatePseudoLegalMoves(MoveList& _moves) {
 }
 
 template<>
-void Position::generatePseudoLegalMoves<Piece::PAWN>(MoveList& _moves) {
-
-    //TODO Implement Promotions
+void Position::generatePseudoLegalMoves<Piece::PAWN>(MoveList &_moves) {
 
     Piece::Color c = _sideToMove;
     U64 enemies = c ? _board.getWhite() : _board.getBlack();
@@ -253,7 +251,7 @@ void Position::generatePseudoLegalMoves<Piece::PAWN>(MoveList& _moves) {
 
 }
 
-void Position::generateAllLegalMoves(MoveList& _moves) {
+void Position::generateAllLegalMoves(MoveList &_moves) {
 
     // For no checkers and single checker generate also moves for all other pieces;
     if (powerOfTwo(_currState->_checkers)) {
@@ -326,11 +324,27 @@ bool Position::_isLegal(const Move::Move &move) {
         if (move_castle(type))
             return !_currState->_checkers;
             // to square should not be under attack
-        else{
+        else {
             // Excluding king from occupancy because it can block itself while testing
             // if to square is attacked by any piece
             return !squareAttackedBy(to, _board.getOccupied() ^ square_to_board(from), Piece::Color(!_sideToMove));
         }
+    }
+
+    // special case for en passant
+    if (type == Move::EP_CAPTURE) {
+
+        // Also need to check if removing both pawns ends up in check
+        Direction dir = _sideToMove ? UP : DOWN;
+        U64 capturing = square_to_board(from);
+        U64 target = square_to_board(to);
+        U64 captured = shift(target, dir);
+        U64 occupied = (_board.getOccupied() ^capturing ^captured) | target;
+        U64 enemies = _sideToMove ? _board.getWhite() : _board.getBlack();
+
+        // just checks of sliding pieces possible
+        return !(((Attack::slidingAttacks(Piece::BISHOP, king, occupied) & _board.getSlidingDiagonal()) |
+                  (Attack::slidingAttacks(Piece::ROOK, king, occupied) & _board.getSlidingOrthogonal())) & enemies);
     }
 
     // Check if moved piece is pinned
@@ -369,7 +383,7 @@ void Position::do_move(Move::Move move) {
         if (type == Move::CASTLE_Q) {
             Square rook = c ? A8 : A1;
             _board.move(rook, Square(rook + 3));
-        } else if(type == Move::CASTLE_K) {
+        } else if (type == Move::CASTLE_K) {
             Square rook = c ? H8 : H1;
             _board.move(rook, Square(rook - 2));
         }
@@ -430,11 +444,24 @@ void Position::do_move(Move::Move move) {
         _board.remove(from);
         _board.remove(to);
         switch (type) {
-            case Move::PROMOTION_B: case Move::PROMOCAP_B: _board.add(merge(c, Piece::BISHOP), to); break;
-            case Move::PROMOTION_R: case Move::PROMOCAP_R: _board.add(merge(c, Piece::ROOK), to); break;
-            case Move::PROMOTION_Q: case Move::PROMOCAP_Q: _board.add(merge(c, Piece::QUEEN), to); break;
-            case Move::PROMOTION_N: case Move::PROMOCAP_N: _board.add(merge(c, Piece::KNIGHT), to); break;
-            default: break; // silence the clang-tidy...
+            case Move::PROMOTION_B:
+            case Move::PROMOCAP_B:
+                _board.add(merge(c, Piece::BISHOP), to);
+                break;
+            case Move::PROMOTION_R:
+            case Move::PROMOCAP_R:
+                _board.add(merge(c, Piece::ROOK), to);
+                break;
+            case Move::PROMOTION_Q:
+            case Move::PROMOCAP_Q:
+                _board.add(merge(c, Piece::QUEEN), to);
+                break;
+            case Move::PROMOTION_N:
+            case Move::PROMOCAP_N:
+                _board.add(merge(c, Piece::KNIGHT), to);
+                break;
+            default:
+                break; // silence the clang-tidy...
         }
     } else {
         _board.move(from, to);
@@ -485,11 +512,10 @@ void Position::undo_move(Move::Move move) {
     // respawn captured piece (careful en passant)
     if (move_capture(type)) {
 
-        if(type == Move::EP_CAPTURE) {
+        if (type == Move::EP_CAPTURE) {
             _board.add(_currState->_lastCaptured, Square(to + (c ? +1 : -1) * 8));
             _enPassantTarget = to;
-        }
-        else
+        } else
             _board.add(_currState->_lastCaptured, to);
 
     } else if (move_castle(type)) {
@@ -530,7 +556,7 @@ std::ostream &operator<<(std::ostream &strm, const Position &pos) {
     return strm;
 }
 
-std::ostream& operator<<(std::ostream &strm, const MoveList &a) {
+std::ostream &operator<<(std::ostream &strm, const MoveList &a) {
     strm << "Moves:             ";
     for (const auto &move : a)
         strm << move << ", ";
@@ -578,12 +604,12 @@ const Square *Position::kingPos() const {
     return _kingPos;
 }
 
-template void Position::generatePseudoLegalMoves<Piece::KING>(MoveList&);
+template void Position::generatePseudoLegalMoves<Piece::KING>(MoveList &);
 
-template void Position::generatePseudoLegalMoves<Piece::KNIGHT>(MoveList&);
+template void Position::generatePseudoLegalMoves<Piece::KNIGHT>(MoveList &);
 
-template void Position::generatePseudoLegalMoves<Piece::BISHOP>(MoveList&);
+template void Position::generatePseudoLegalMoves<Piece::BISHOP>(MoveList &);
 
-template void Position::generatePseudoLegalMoves<Piece::QUEEN>(MoveList&);
+template void Position::generatePseudoLegalMoves<Piece::QUEEN>(MoveList &);
 
-template void Position::generatePseudoLegalMoves<Piece::ROOK>(MoveList&);
+template void Position::generatePseudoLegalMoves<Piece::ROOK>(MoveList &);

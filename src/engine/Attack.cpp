@@ -40,6 +40,7 @@ U64 Attack::nonSlidingAttacks(Piece::Type t, Square square, Piece::Color c) {
 
 }
 
+// TODO can be templated
 U64 Attack::slidingAttacks(Piece::Type t, Square square, U64 occupied) {
     switch (t) {
         case Piece::BISHOP:

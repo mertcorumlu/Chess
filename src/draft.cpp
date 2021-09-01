@@ -30,7 +30,7 @@ unsigned long long search(Position pos, int maxDepth, int currDepth) {
 }
 
 int main() {
-    Position p("r3k2r/p1ppqpb1/bn2pn2/3PN1p1/4P3/1pN2Q1p/PPPBBPPP/R4R1K w kq - 0 3");
+    Position p("8/2p5/8/KP1p2kr/5pP1/8/4P3/6R1 b - g3 0 3");
 
     MoveList moves;
     moves.reserve(256);
@@ -48,16 +48,16 @@ int main() {
     p.generateAllLegalMoves(moves);
 //    U64 occ = p.board().getOccupied();
 //    Square kingpos[2] = {p.kingPos()[0], p.kingPos()[1]};
-    for (const auto& move : moves) {
-        p.do_move(move);
-//        cout << move_from(move) << move_to(move) << ": " << search(p, 2, 2) << endl;
-        cout << move_from(move) << move_to(move) << ": 1" << endl;
-//        cout << move << endl;
-        p.undo_move(move);;
-//        if (occ != p.board().getOccupied()) {
-//            cout << move << endl;
-//        }
-    }
+//    for (const auto& move : moves) {
+//        p.do_move(move);
+////        cout << move_from(move) << move_to(move) << ": " << search(p, 2, 2) << endl;
+//        cout << move_from(move) << move_to(move) << ": 1" << endl;
+////        cout << move << endl;
+//        p.undo_move(move);;
+////        if (occ != p.board().getOccupied()) {
+////            cout << move << endl;
+////        }
+//    }
 
 //    MoveList list;
 //    list.reserve(256);
