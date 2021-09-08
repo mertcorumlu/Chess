@@ -89,6 +89,12 @@ Position::Position(string &&fen) {
 
     // Find pieces who are avoiding being in check
     _findPinned();
+
+    // Calculate Score
+    for (int i = 0; i < 64; ++i) {
+        auto piece = _board.pieceAt(Square(i));
+        _score += scores[piece] * (_sideToMove == colorOf(piece) ? +1: -1);
+    }
 }
 
 U64 Position::squareAttackedBy(Square square, Piece::Color attacker) {
@@ -437,6 +443,7 @@ void Position::do_move(Move::Move move) {
         }
 
         halfMoves = -1;
+        _score += scores[captured];
     }
 
     // Move piece on board
@@ -463,9 +470,13 @@ void Position::do_move(Move::Move move) {
             default:
                 break; // silence the clang-tidy...
         }
+        _score += scores[_board.pieceAt(to)];
+        _score -= scores[Piece::wPawn];
     } else {
         _board.move(from, to);
     }
+
+    _score = -_score; // For other player score is the negative
 
     _currState->_halfMoveClock = ++halfMoves;
     _currState->_lastCaptured = captured;
@@ -487,6 +498,7 @@ void Position::undo_move(Move::Move move) {
     auto prevState = _states.top();
 
     _sideToMove = Piece::Color(!_sideToMove);
+    _score = -_score;
 
     Move::Type type = move_type(move);
     Square from = move_from(move);
@@ -495,9 +507,11 @@ void Position::undo_move(Move::Move move) {
 
     // Redo move on board
     if (move_promotion(type)) {
+        _score -= scores[_board.pieceAt(to)];
         _board.remove(to);
         _board.remove(from);
         _board.add(merge(c, Piece::PAWN), from);
+        _score += scores[Piece::wPawn];
     } else {
         _board.move(to, from);
     }
@@ -517,6 +531,8 @@ void Position::undo_move(Move::Move move) {
             _enPassantTarget = to;
         } else
             _board.add(_currState->_lastCaptured, to);
+
+        _score -= scores[_currState->_lastCaptured];
 
     } else if (move_castle(type)) {
         // If castling was the case, than also rooks position must be recovered
@@ -602,6 +618,10 @@ U64 Position::pinned() const {
 
 const Square *Position::kingPos() const {
     return _kingPos;
+}
+
+long Position::score() const {
+    return _score;
 }
 
 template void Position::generatePseudoLegalMoves<Piece::KING>(MoveList &);

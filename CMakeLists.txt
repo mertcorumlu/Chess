@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(Chess)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -mavx2 -msse2 -Wall -Wextra -mbmi2")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=x86-64 -mavx2 -msse2 -Wall -Wextra -mbmi2")
 
 include(CPM.cmake)
 

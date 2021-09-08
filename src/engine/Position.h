@@ -10,6 +10,10 @@
 #include "../types.h"
 #include "Board.h"
 
+constexpr long scores[] {
+    0, 0, 1, 1, 3, 3, 3, 3, 5, 5, 9, 9, 0, 0
+};
+
 class Position {
 public:
 
@@ -51,6 +55,8 @@ public:
 
     U64 pinned() const;
 
+    long score() const;
+
     const Square *kingPos() const;
 
 private:
@@ -68,11 +74,10 @@ private:
     Square _kingPos[2];
     stack<shared_ptr<State>> _states;
     shared_ptr<State> _currState;
+    long _score = 0;
 
     void _findCheckers();
     void _findPinned();
-
-public:
     bool _isLegal(const Move::Move& move);
 
 };
